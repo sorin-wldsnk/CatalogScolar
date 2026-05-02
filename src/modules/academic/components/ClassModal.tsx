@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,6 +32,10 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+function gradeLevelLabel(level: number) {
+  return level === 0 ? "Clasa Pregătitoare" : `Clasa ${level}`;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -40,6 +44,7 @@ interface Props {
 
 export function ClassModal({ open, onClose, academicYearId }: Props) {
   const [isPending, startTransition] = useTransition();
+  const [selectedLevel, setSelectedLevel] = useState(5);
 
   const {
     register,
@@ -52,12 +57,19 @@ export function ClassModal({ open, onClose, academicYearId }: Props) {
     defaultValues: { gradeLevel: 5 },
   });
 
+  function handleClose() {
+    reset();
+    setSelectedLevel(5);
+    onClose();
+  }
+
   function onSubmit(data: FormValues) {
     startTransition(async () => {
       const result = await createClass({ ...data, academicYearId });
       if (result.success) {
         toast.success("Clasa a fost creată");
         reset();
+        setSelectedLevel(5);
         onClose();
       } else {
         toast.error(result.error ?? "Eroare la creare");
@@ -66,7 +78,7 @@ export function ClassModal({ open, onClose, academicYearId }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Clasă nouă</DialogTitle>
@@ -80,16 +92,23 @@ export function ClassModal({ open, onClose, academicYearId }: Props) {
           <div className="space-y-1.5">
             <Label>Nivel (clasă)</Label>
             <Select
-              defaultValue="5"
-              onValueChange={(v) => { if (v) setValue("gradeLevel", parseInt(v)); }}
+              value={String(selectedLevel)}
+              onValueChange={(v) => {
+                if (!v) return;
+                const n = parseInt(v);
+                setSelectedLevel(n);
+                setValue("gradeLevel", n);
+              }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selectați nivelul" />
+                <SelectValue>
+                  {gradeLevelLabel(selectedLevel)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 9 }, (_, i) => (
                   <SelectItem key={i} value={String(i)}>
-                    {i === 0 ? "Clasa Pregătitoare" : `Clasa ${i}`}
+                    {gradeLevelLabel(i)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -97,7 +116,7 @@ export function ClassModal({ open, onClose, academicYearId }: Props) {
             {errors.gradeLevel && <p className="text-xs text-destructive">{errors.gradeLevel.message}</p>}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>
               Anulează
             </Button>
             <Button type="submit" disabled={isPending} className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white">

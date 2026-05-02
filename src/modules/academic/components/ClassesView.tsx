@@ -71,7 +71,11 @@ export function ClassesView({ years, selectedYearId, classes }: Props) {
         <span className="text-sm font-medium text-gray-600">An școlar:</span>
         <Select value={selectedYearId} onValueChange={handleYearChange}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Selectați anul" />
+            <SelectValue>
+              {selectedYear
+                ? `${selectedYear.name}${selectedYear.isActive ? " (Activ)" : ""}`
+                : "Selectați anul"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {years.map((y) => (

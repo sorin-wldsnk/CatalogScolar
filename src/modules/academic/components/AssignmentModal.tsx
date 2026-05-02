@@ -75,88 +75,115 @@ export function AssignmentModal({ open, onClose, academicYearId, teachers, class
           <DialogTitle>Încadrare nouă</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+          {/* Profesor */}
           <div className="space-y-1.5">
             <Label>Profesor</Label>
             <Controller
               name="teacherUserId"
               control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value ?? ""}
-                  onValueChange={(v) => { if (v) field.onChange(v); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selectați profesorul" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers.length === 0 ? (
-                      <SelectItem value="none" disabled>
-                        Niciun profesor disponibil
-                      </SelectItem>
-                    ) : (
-                      teachers.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.lastName} {t.firstName}
+              render={({ field }) => {
+                const teacher = teachers.find((t) => t.id === field.value);
+                return (
+                  <Select
+                    value={field.value ?? ""}
+                    onValueChange={(v) => { if (v) field.onChange(v); }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {teacher
+                          ? `${teacher.lastName} ${teacher.firstName}`
+                          : "Selectați profesorul"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          Niciun profesor disponibil
                         </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
+                      ) : (
+                        teachers.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.lastName} {t.firstName}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                );
+              }}
             />
-            {errors.teacherUserId && <p className="text-xs text-destructive">{errors.teacherUserId.message}</p>}
+            {errors.teacherUserId && (
+              <p className="text-xs text-destructive">{errors.teacherUserId.message}</p>
+            )}
           </div>
 
+          {/* Clasă */}
           <div className="space-y-1.5">
             <Label>Clasă</Label>
             <Controller
               name="classId"
               control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value ?? ""}
-                  onValueChange={(v) => { if (v) field.onChange(v); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selectați clasa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              render={({ field }) => {
+                const cls = classes.find((c) => c.id === field.value);
+                return (
+                  <Select
+                    value={field.value ?? ""}
+                    onValueChange={(v) => { if (v) field.onChange(v); }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {cls ? cls.name : "Selectați clasa"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              }}
             />
-            {errors.classId && <p className="text-xs text-destructive">{errors.classId.message}</p>}
+            {errors.classId && (
+              <p className="text-xs text-destructive">{errors.classId.message}</p>
+            )}
           </div>
 
+          {/* Materie */}
           <div className="space-y-1.5">
             <Label>Materie</Label>
             <Controller
               name="subjectId"
               control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value ?? ""}
-                  onValueChange={(v) => { if (v) field.onChange(v); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selectați materia" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjects.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name} ({s.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              render={({ field }) => {
+                const subj = subjects.find((s) => s.id === field.value);
+                return (
+                  <Select
+                    value={field.value ?? ""}
+                    onValueChange={(v) => { if (v) field.onChange(v); }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {subj ? `${subj.name} (${subj.code})` : "Selectați materia"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} ({s.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              }}
             />
-            {errors.subjectId && <p className="text-xs text-destructive">{errors.subjectId.message}</p>}
+            {errors.subjectId && (
+              <p className="text-xs text-destructive">{errors.subjectId.message}</p>
+            )}
           </div>
 
           <DialogFooter>

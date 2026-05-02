@@ -105,7 +105,9 @@ export function StudentsView({
             onValueChange={(v) => { if (v) buildUrl({ an: v, clasa: undefined }); }}
           >
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="An școlar" />
+              <SelectValue>
+                {years.find((y) => y.id === selectedYearId)?.name ?? "An școlar"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {years.map((y) => (
@@ -121,7 +123,11 @@ export function StudentsView({
             onValueChange={(v) => buildUrl({ clasa: !v || v === "all" ? undefined : v })}
           >
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="Toate clasele" />
+              <SelectValue>
+                {selectedClassId
+                  ? (classes.find((c) => c.id === selectedClassId)?.name ?? "Toate clasele")
+                  : "Toate clasele"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toate clasele</SelectItem>
@@ -138,7 +144,11 @@ export function StudentsView({
             onValueChange={(v) => buildUrl({ status: !v || v === "all" ? undefined : v })}
           >
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="Status" />
+              <SelectValue>
+                {selectedStatus
+                  ? (STATUS_LABELS[selectedStatus]?.label ?? "Toate statusurile")
+                  : "Toate statusurile"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toate statusurile</SelectItem>

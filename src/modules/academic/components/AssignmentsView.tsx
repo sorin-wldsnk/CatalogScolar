@@ -90,9 +90,16 @@ export function AssignmentsView({ years, selectedYearId, classes, subjects, assi
           value={selectedYearId}
           onValueChange={(v) => { if (v) router.push(`/admin/incadrari?an=${v}`); }}
         >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Selectați" />
-          </SelectTrigger>
+          {(() => {
+            const y = years.find((y) => y.id === selectedYearId);
+            return (
+              <SelectTrigger className="w-48">
+                <SelectValue>
+                  {y ? `${y.name}${y.isActive ? " (Activ)" : ""}` : "Selectați"}
+                </SelectValue>
+              </SelectTrigger>
+            );
+          })()}
           <SelectContent>
             {years.map((y) => (
               <SelectItem key={y.id} value={y.id}>
