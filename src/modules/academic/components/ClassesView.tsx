@@ -74,14 +74,11 @@ export function ClassesView({ years, selectedYearId, classes }: Props) {
             <SelectValue placeholder="Selectați anul" />
           </SelectTrigger>
           <SelectContent>
-            {years.map((y) => {
-              const label = y.isActive ? `${y.name} (Activ)` : y.name;
-              return (
-                <SelectItem key={y.id} value={y.id} label={label}>
-                  {label}
-                </SelectItem>
-              );
-            })}
+            {years.map((y) => (
+              <SelectItem key={y.id} value={y.id}>
+                {y.name} {y.isActive ? "(Activ)" : ""}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

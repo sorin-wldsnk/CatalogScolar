@@ -81,22 +81,24 @@ export function AssignmentModal({ open, onClose, academicYearId, teachers, class
               name="teacherUserId"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={(v) => { if (v) field.onChange(v); }}>
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={(v) => { if (v) field.onChange(v); }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selectați profesorul" />
                   </SelectTrigger>
                   <SelectContent>
                     {teachers.length === 0 ? (
-                      <SelectItem value="none" label="Niciun profesor disponibil" disabled>Niciun profesor disponibil</SelectItem>
+                      <SelectItem value="none" disabled>
+                        Niciun profesor disponibil
+                      </SelectItem>
                     ) : (
-                      teachers.map((t) => {
-                        const name = `${t.lastName} ${t.firstName}`;
-                        return (
-                          <SelectItem key={t.id} value={t.id} label={name}>
-                            {name}
-                          </SelectItem>
-                        );
-                      })
+                      teachers.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.lastName} {t.firstName}
+                        </SelectItem>
+                      ))
                     )}
                   </SelectContent>
                 </Select>
@@ -111,13 +113,18 @@ export function AssignmentModal({ open, onClose, academicYearId, teachers, class
               name="classId"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={(v) => { if (v) field.onChange(v); }}>
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={(v) => { if (v) field.onChange(v); }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selectați clasa" />
                   </SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id} label={c.name}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -132,19 +139,19 @@ export function AssignmentModal({ open, onClose, academicYearId, teachers, class
               name="subjectId"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={(v) => { if (v) field.onChange(v); }}>
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={(v) => { if (v) field.onChange(v); }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selectați materia" />
                   </SelectTrigger>
                   <SelectContent>
-                    {subjects.map((s) => {
-                      const label = `${s.name} (${s.code})`;
-                      return (
-                        <SelectItem key={s.id} value={s.id} label={label}>
-                          {label}
-                        </SelectItem>
-                      );
-                    })}
+                    {subjects.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} ({s.code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}

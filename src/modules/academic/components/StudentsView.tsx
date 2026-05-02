@@ -109,7 +109,7 @@ export function StudentsView({
             </SelectTrigger>
             <SelectContent>
               {years.map((y) => (
-                <SelectItem key={y.id} value={y.id} label={y.name}>
+                <SelectItem key={y.id} value={y.id}>
                   {y.name}
                 </SelectItem>
               ))}
@@ -124,9 +124,9 @@ export function StudentsView({
               <SelectValue placeholder="Toate clasele" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" label="Toate clasele">Toate clasele</SelectItem>
+              <SelectItem value="all">Toate clasele</SelectItem>
               {classes.map((c) => (
-                <SelectItem key={c.id} value={c.id} label={c.name}>
+                <SelectItem key={c.id} value={c.id}>
                   {c.name}
                 </SelectItem>
               ))}
@@ -141,9 +141,9 @@ export function StudentsView({
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" label="Toate statusurile">Toate statusurile</SelectItem>
+              <SelectItem value="all">Toate statusurile</SelectItem>
               {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k} label={v.label}>{v.label}</SelectItem>
+                <SelectItem key={k} value={k}>{v.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
