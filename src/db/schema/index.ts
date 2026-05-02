@@ -11,3 +11,6 @@ export * from "./enrollment";
 export * from "./subject";
 export * from "./teaching_assignment";
 export * from "./student_guardian";
+export * from "./grade";
+export * from "./absence";
+export * from "./observation";

@@ -15,6 +15,13 @@
       "when": 1777723635803,
       "tag": "0001_dear_risque",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777746751251,
+      "tag": "0002_brown_fallen_one",
+      "breakpoints": true
     }
   ]
 }

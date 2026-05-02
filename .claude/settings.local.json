@@ -12,7 +12,8 @@
       "Bash(DATABASE_URL=postgresql://catalog_user:catalog_pass@localhost:5432/catalog_scolar pnpm build *)",
       "Bash(git -C /home/sorin/CatalogScolar status --short)",
       "Bash(git *)",
-      "Bash(pnpm build *)"
+      "Bash(pnpm build *)",
+      "Bash(pnpm drizzle-kit *)"
     ]
   }
 }
