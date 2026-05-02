@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { hash } from "bcryptjs";
+import { normalizeDiacritics } from "../lib/diacritics";
 import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL!;
@@ -18,13 +19,15 @@ const ROLES = [
 async function seed() {
   console.log("Seeding database...");
 
+  // ── Roles ──────────────────────────────────────────────────────────────────
   const insertedRoles = await db
     .insert(schema.role)
     .values(ROLES)
     .onConflictDoNothing()
     .returning();
-  console.log(`Inserted ${insertedRoles.length} roles`);
+  console.log(`Roles: ${insertedRoles.length} inserted`);
 
+  // ── School ─────────────────────────────────────────────────────────────────
   const [insertedSchool] = await db
     .insert(schema.school)
     .values({
@@ -38,20 +41,22 @@ async function seed() {
     .returning();
 
   if (!insertedSchool) {
-    console.log("School already exists, skipping admin user creation");
+    console.log("School already exists — skipping base seed");
+    await seedAcademic();
     await client.end();
     return;
   }
-  console.log(`Inserted school: ${insertedSchool.name}`);
+  console.log(`School: ${insertedSchool.name}`);
 
+  // ── Admin user ─────────────────────────────────────────────────────────────
   const passwordHash = await hash("Admin@1234!", 12);
   const [adminUser] = await db
     .insert(schema.appUser)
     .values({
       email: "admin@catalogscolar.ro",
       passwordHash,
-      firstName: "Administrator",
-      lastName: "Sistem",
+      firstName: normalizeDiacritics("Administrator"),
+      lastName: normalizeDiacritics("Sistem"),
       isActive: true,
       mustChangeOnLogin: true,
     })
@@ -60,18 +65,15 @@ async function seed() {
 
   if (!adminUser) {
     console.log("Admin user already exists");
+    await seedAcademic();
     await client.end();
     return;
   }
-  console.log(`Inserted admin user: ${adminUser.email}`);
+  console.log(`Admin: ${adminUser.email}`);
 
   const [membership] = await db
     .insert(schema.schoolMembership)
-    .values({
-      schoolId: insertedSchool.id,
-      userId: adminUser.id,
-      isActive: true,
-    })
+    .values({ schoolId: insertedSchool.id, userId: adminUser.id, isActive: true })
     .returning();
 
   const allRoles = await db.select().from(schema.role);
@@ -81,11 +83,146 @@ async function seed() {
       .insert(schema.userRole)
       .values({ membershipId: membership.id, roleId: adminRole.id })
       .onConflictDoNothing();
-    console.log("Assigned ADMIN role to admin user");
+    console.log("ADMIN role assigned");
   }
 
+  await seedAcademic();
   console.log("Seeding complete.");
   await client.end();
+}
+
+async function seedAcademic() {
+  // ── Resolve school ─────────────────────────────────────────────────────────
+  const [school] = await db
+    .select()
+    .from(schema.school)
+    .where(
+      (await import("drizzle-orm")).eq(schema.school.slug, "scoala-generala-nr-1")
+    )
+    .limit(1);
+
+  if (!school) {
+    console.log("School not found — skipping academic seed");
+    return;
+  }
+
+  // ── Academic year ──────────────────────────────────────────────────────────
+  const [year] = await db
+    .insert(schema.academicYear)
+    .values({
+      schoolId: school.id,
+      name: "2024-2025",
+      startDate: "2024-09-09",
+      endDate: "2025-06-13",
+      isActive: true,
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  const activeYear = year ?? (
+    await db
+      .select()
+      .from(schema.academicYear)
+      .where(
+        (await import("drizzle-orm")).and(
+          (await import("drizzle-orm")).eq(schema.academicYear.schoolId, school.id),
+          (await import("drizzle-orm")).eq(schema.academicYear.name, "2024-2025")
+        )
+      )
+      .limit(1)
+  )[0];
+
+  if (!activeYear) {
+    console.log("Could not resolve academic year");
+    return;
+  }
+  console.log(`Academic year: ${activeYear.name}`);
+
+  // ── Classes ────────────────────────────────────────────────────────────────
+  const classesData = [
+    { name: "7A", gradeLevel: 7 },
+    { name: "7B", gradeLevel: 7 },
+    { name: "8A", gradeLevel: 8 },
+    { name: "8B", gradeLevel: 8 },
+  ];
+
+  const insertedClasses: (typeof schema.classGroup.$inferSelect)[] = [];
+  for (const cls of classesData) {
+    const [inserted] = await db
+      .insert(schema.classGroup)
+      .values({
+        schoolId: school.id,
+        academicYearId: activeYear.id,
+        name: cls.name,
+        gradeLevel: cls.gradeLevel,
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (inserted) insertedClasses.push(inserted);
+  }
+
+  // fetch all if some already existed
+  const { eq, and } = await import("drizzle-orm");
+  const allClasses = await db
+    .select()
+    .from(schema.classGroup)
+    .where(
+      and(
+        eq(schema.classGroup.schoolId, school.id),
+        eq(schema.classGroup.academicYearId, activeYear.id)
+      )
+    );
+  console.log(`Classes: ${allClasses.length} total`);
+
+  // ── Subjects ───────────────────────────────────────────────────────────────
+  const subjectsData = [
+    { name: normalizeDiacritics("Matematică"), code: "MAT" },
+    { name: normalizeDiacritics("Limba română"), code: "LRO" },
+    { name: "Biologie", code: "BIO" },
+    { name: "Istorie", code: "IST" },
+    { name: normalizeDiacritics("Limba engleză"), code: "ENG" },
+  ];
+
+  for (const sub of subjectsData) {
+    await db
+      .insert(schema.subject)
+      .values({ schoolId: school.id, ...sub })
+      .onConflictDoNothing();
+  }
+  console.log(`Subjects: ${subjectsData.length} upserted`);
+
+  // ── Demo students in 7A ────────────────────────────────────────────────────
+  const class7A = allClasses.find((c) => c.name === "7A");
+  if (!class7A) return;
+
+  const studentsData = [
+    { firstName: normalizeDiacritics("Andrei"), lastName: normalizeDiacritics("Popescu") },
+    { firstName: normalizeDiacritics("Maria"), lastName: normalizeDiacritics("Ionescu") },
+    { firstName: normalizeDiacritics("Ștefan"), lastName: normalizeDiacritics("Gheorghe") },
+  ];
+
+  for (const s of studentsData) {
+    const [st] = await db
+      .insert(schema.student)
+      .values({ schoolId: school.id, ...s, status: "ACTIVE" })
+      .onConflictDoNothing()
+      .returning();
+
+    if (st) {
+      await db
+        .insert(schema.enrollment)
+        .values({
+          schoolId: school.id,
+          studentId: st.id,
+          classId: class7A.id,
+          academicYearId: activeYear.id,
+          enrolledAt: "2024-09-09",
+          status: "ACTIVE",
+        })
+        .onConflictDoNothing();
+    }
+  }
+  console.log("Demo students: 3 inserted in 7A");
 }
 
 seed().catch((err) => {

@@ -9,6 +9,12 @@ import {
   Settings,
   LogOut,
   LayoutDashboard,
+  ChevronDown,
+  GraduationCap,
+  Users,
+  BookMarked,
+  ClipboardList,
+  CalendarDays,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,6 +30,7 @@ import {
 } from "@/components/ui/sidebar";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Panou principal", icon: LayoutDashboard },
@@ -32,7 +39,13 @@ const navItems = [
   { href: "/rapoarte", label: "Rapoarte", icon: BarChart3 },
 ];
 
-const adminItems = [{ href: "/admin", label: "Administrare", icon: Settings }];
+const adminSubItems = [
+  { href: "/admin/ani-scolari", label: "Ani școlari", icon: CalendarDays },
+  { href: "/admin/clase", label: "Clase", icon: GraduationCap },
+  { href: "/admin/elevi", label: "Elevi", icon: Users },
+  { href: "/admin/materii", label: "Materii", icon: BookMarked },
+  { href: "/admin/incadrari", label: "Încadrări", icon: ClipboardList },
+];
 
 function NavLink({
   href,
@@ -70,6 +83,8 @@ function NavLink({
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const isAdminSection = pathname.startsWith("/admin");
+  const [adminOpen, setAdminOpen] = useState(isAdminSection);
 
   return (
     <Sidebar>
@@ -111,15 +126,59 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminItems.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  icon={item.icon}
-                  isActive={pathname === item.href}
-                />
-              ))}
+              {/* Admin expandable section */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isAdminSection && !adminSubItems.some((i) => i.href === pathname)}
+                  onClick={() => setAdminOpen((v) => !v)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full cursor-pointer",
+                    isAdminSection
+                      ? "text-white"
+                      : "text-white/70 hover:bg-white/10 hover:text-white"
+                  )}
+                >
+                  <Settings className="w-4 h-4 shrink-0" />
+                  <span className="flex-1">Administrare</span>
+                  <ChevronDown
+                    className={cn(
+                      "w-3.5 h-3.5 transition-transform",
+                      adminOpen && "rotate-180"
+                    )}
+                  />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Sub-items */}
+              {adminOpen && (
+                <div className="ml-3 border-l border-white/10 pl-3 mt-1 space-y-0.5">
+                  {adminSubItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          render={
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                "flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors w-full",
+                                isActive
+                                  ? "bg-white/15 text-white"
+                                  : "text-white/60 hover:bg-white/10 hover:text-white"
+                              )}
+                            >
+                              <Icon className="w-3.5 h-3.5 shrink-0" />
+                              <span>{item.label}</span>
+                            </Link>
+                          }
+                        />
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </div>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
