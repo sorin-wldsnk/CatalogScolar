@@ -1,0 +1,125 @@
+import { db } from "@/db";
+import { grade, absence, enrollment, student, classGroup } from "@/db/schema";
+import { eq, and, sql, inArray } from "drizzle-orm";
+
+export interface CatalogStudentRow {
+  enrollmentId: string;
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  grades: Array<{
+    id: string;
+    valueNumeric: string | null;
+    valueQualitative: string | null;
+    gradeType: string;
+    weight: string;
+    gradedAt: string;
+    notes: string | null;
+  }>;
+  excusedAbsences: number;
+  unexcusedAbsences: number;
+  pendingAbsences: number;
+}
+
+export async function getCatalogTableData(
+  classId: string,
+  subjectId: string,
+  academicYearId: string,
+  semester: number,
+  schoolId: string
+): Promise<CatalogStudentRow[]> {
+  const students = await db
+    .select({
+      enrollmentId: enrollment.id,
+      studentId: student.id,
+      firstName: student.firstName,
+      lastName: student.lastName,
+    })
+    .from(enrollment)
+    .innerJoin(student, eq(enrollment.studentId, student.id))
+    .where(
+      and(
+        eq(enrollment.classId, classId),
+        eq(enrollment.academicYearId, academicYearId),
+        eq(enrollment.status, "ACTIVE"),
+        eq(enrollment.schoolId, schoolId)
+      )
+    )
+    .orderBy(student.lastName, student.firstName);
+
+  if (students.length === 0) return [];
+
+  const enrollmentIds = students.map((s) => s.enrollmentId);
+
+  const grades = await db
+    .select({
+      id: grade.id,
+      enrollmentId: grade.enrollmentId,
+      valueNumeric: grade.valueNumeric,
+      valueQualitative: grade.valueQualitative,
+      gradeType: grade.gradeType,
+      weight: grade.weight,
+      gradedAt: grade.gradedAt,
+      notes: grade.notes,
+    })
+    .from(grade)
+    .where(
+      and(
+        eq(grade.subjectId, subjectId),
+        eq(grade.academicYearId, academicYearId),
+        eq(grade.semester, semester),
+        inArray(grade.enrollmentId, enrollmentIds)
+      )
+    )
+    .orderBy(grade.gradedAt);
+
+  const absenceCounts = await db
+    .select({
+      enrollmentId: absence.enrollmentId,
+      status: absence.status,
+      cnt: sql<number>`COUNT(*)`,
+    })
+    .from(absence)
+    .where(
+      and(
+        eq(absence.subjectId, subjectId),
+        eq(absence.academicYearId, academicYearId),
+        eq(absence.semester, semester),
+        inArray(absence.enrollmentId, enrollmentIds)
+      )
+    )
+    .groupBy(absence.enrollmentId, absence.status);
+
+  return students.map((s) => {
+    const studentGrades = grades.filter((g) => g.enrollmentId === s.enrollmentId);
+    const studentAbsences = absenceCounts.filter((a) => a.enrollmentId === s.enrollmentId);
+
+    return {
+      enrollmentId: s.enrollmentId,
+      studentId: s.studentId,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      grades: studentGrades.map((g) => ({
+        id: g.id,
+        valueNumeric: g.valueNumeric,
+        valueQualitative: g.valueQualitative,
+        gradeType: g.gradeType,
+        weight: g.weight ?? "1",
+        gradedAt: g.gradedAt ?? "",
+        notes: g.notes,
+      })),
+      excusedAbsences: Number(studentAbsences.find((a) => a.status === "EXCUSED")?.cnt ?? 0),
+      unexcusedAbsences: Number(studentAbsences.find((a) => a.status === "UNEXCUSED")?.cnt ?? 0),
+      pendingAbsences: Number(studentAbsences.find((a) => a.status === "PENDING_EXCUSE")?.cnt ?? 0),
+    };
+  });
+}
+
+export async function getClassGradeLevel(classId: string): Promise<number | null> {
+  const [cls] = await db
+    .select({ gradeLevel: classGroup.gradeLevel })
+    .from(classGroup)
+    .where(eq(classGroup.id, classId))
+    .limit(1);
+  return cls?.gradeLevel ?? null;
+}
