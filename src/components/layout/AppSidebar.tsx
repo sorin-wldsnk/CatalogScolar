@@ -12,6 +12,7 @@ import {
   ChevronDown,
   GraduationCap,
   Users,
+  UserCog,
   BookMarked,
   ClipboardList,
   CalendarDays,
@@ -42,6 +43,7 @@ const navItems = [
 const adminSubItems = [
   { href: "/admin/ani-scolari", label: "Ani școlari", icon: CalendarDays },
   { href: "/admin/clase", label: "Clase", icon: GraduationCap },
+  { href: "/admin/profesori", label: "Profesori", icon: UserCog },
   { href: "/admin/elevi", label: "Elevi", icon: Users },
   { href: "/admin/materii", label: "Materii", icon: BookMarked },
   { href: "/admin/incadrari", label: "Încadrări", icon: ClipboardList },

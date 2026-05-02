@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm create *)",
+      "Bash(mv /home/sorin/catalog-scolar/* /home/sorin/CatalogScolar/)",
+      "Bash(mv /home/sorin/catalog-scolar/.* /home/sorin/CatalogScolar/)",
+      "Bash(rmdir /home/sorin/catalog-scolar)",
+      "Bash(pnpm approve-builds *)",
+      "Bash(python3 -c \" import json, sys data = json.load\\(sys.stdin\\) data['pnpm'] = {'onlyBuiltDependencies': ['esbuild']} print\\(json.dumps\\(data, indent=2\\)\\) \")",
+      "Bash(mv /tmp/pkg.json /home/sorin/CatalogScolar/package.json pnpm install)",
+      "Bash(pnpm dlx *)",
+      "Bash(DATABASE_URL=postgresql://catalog_user:catalog_pass@localhost:5432/catalog_scolar pnpm build *)",
+      "Bash(git -C /home/sorin/CatalogScolar status --short)",
+      "Bash(git *)",
+      "Bash(pnpm build *)"
+    ]
+  }
+}
