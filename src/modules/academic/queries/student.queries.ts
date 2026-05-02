@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { student, enrollment, classGroup } from "@/db/schema";
-import { eq, and, ilike, or } from "drizzle-orm";
+import { eq, and, ilike, or, notInArray } from "drizzle-orm";
 
 interface StudentFilters {
   classId?: string;
@@ -92,6 +92,30 @@ export async function getStudentById(id: string, schoolId: string) {
     .where(and(eq(student.id, id), eq(student.schoolId, schoolId)))
     .limit(1);
   return s ?? null;
+}
+
+export async function getUnenrolledStudents(schoolId: string, academicYearId: string) {
+  const enrolledIds = db
+    .select({ id: enrollment.studentId })
+    .from(enrollment)
+    .where(
+      and(
+        eq(enrollment.academicYearId, academicYearId),
+        eq(enrollment.status, "ACTIVE")
+      )
+    );
+
+  return db
+    .select({ id: student.id, firstName: student.firstName, lastName: student.lastName })
+    .from(student)
+    .where(
+      and(
+        eq(student.schoolId, schoolId),
+        eq(student.status, "ACTIVE"),
+        notInArray(student.id, enrolledIds)
+      )
+    )
+    .orderBy(student.lastName, student.firstName);
 }
 
 export async function getStudentWithEnrollment(studentId: string, academicYearId: string) {

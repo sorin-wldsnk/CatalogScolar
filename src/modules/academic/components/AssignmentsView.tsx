@@ -1,11 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { deleteAssignment } from "@/modules/academic/actions/teaching-assignment.actions";
-import { Button } from "@/components/ui/button";
+import { Info } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,8 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AssignmentModal } from "./AssignmentModal";
-import type { AcademicYear, Subject } from "@/db/schema";
+import type { AcademicYear } from "@/db/schema";
 
 interface AssignmentRow {
   id: string;
@@ -36,33 +31,44 @@ interface AssignmentRow {
 
 interface Teacher { id: string; firstName: string; lastName: string; }
 interface ClassRow { id: string; name: string; }
+interface SubjectRow { id: string; name: string; code: string; }
 
 interface Props {
   years: AcademicYear[];
   selectedYearId: string;
   classes: ClassRow[];
-  subjects: Subject[];
+  subjects: SubjectRow[];
   assignments: AssignmentRow[];
   teachers: Teacher[];
+  selectedTeacherId?: string;
+  selectedClassId?: string;
+  selectedSubjectId?: string;
 }
 
-export function AssignmentsView({ years, selectedYearId, classes, subjects, assignments, teachers }: Props) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+export function AssignmentsView({
+  years,
+  selectedYearId,
+  classes,
+  subjects,
+  assignments,
+  teachers,
+  selectedTeacherId,
+  selectedClassId,
+  selectedSubjectId,
+}: Props) {
   const router = useRouter();
 
-  function handleDelete(id: string) {
-    setDeletingId(id);
-    startTransition(async () => {
-      const result = await deleteAssignment(id);
-      if (result.success) {
-        toast.success("Încadrarea a fost eliminată");
-      } else {
-        toast.error(result.error ?? "Eroare");
-      }
-      setDeletingId(null);
-    });
+  function buildUrl(params: Record<string, string | undefined>) {
+    const url = new URLSearchParams();
+    const merged = {
+      an: selectedYearId,
+      profesor: selectedTeacherId,
+      clasa: selectedClassId,
+      materie: selectedSubjectId,
+      ...params,
+    };
+    Object.entries(merged).forEach(([k, v]) => { if (v) url.set(k, v); });
+    router.push(`/admin/incadrari?${url.toString()}`);
   }
 
   return (
@@ -71,39 +77,113 @@ export function AssignmentsView({ years, selectedYearId, classes, subjects, assi
         <div>
           <h1 className="text-2xl font-bold text-[#1e3a5f]">Încadrări</h1>
           <p className="text-muted-foreground mt-1">
-            {assignments.length} încadrări pentru anul selectat
+            {assignments.length} încadrări pentru filtrele selectate
           </p>
         </div>
-        <Button
-          onClick={() => setModalOpen(true)}
-          disabled={!selectedYearId}
-          className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Încadrare nouă
-        </Button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-600">An școlar:</span>
+      {/* Info banner */}
+      <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-800">
+        <Info className="h-4 w-4 mt-0.5 shrink-0" />
+        <p>
+          Încadrările se gestionează din pagina fiecărei clase.
+          Accesați <strong>Administrare → Clase</strong>, dați click pe <strong>Detalii</strong> la clasa dorită,
+          apoi selectați tab-ul <strong>Încadrări</strong>.
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-600 whitespace-nowrap">An:</span>
+          <Select
+            value={selectedYearId}
+            onValueChange={(v) => { if (v) buildUrl({ an: v, clasa: undefined }); }}
+          >
+            {(() => {
+              const y = years.find((yr) => yr.id === selectedYearId);
+              return (
+                <SelectTrigger className="w-40">
+                  <SelectValue>
+                    {y ? `${y.name}${y.isActive ? " (Activ)" : ""}` : "Selectați"}
+                  </SelectValue>
+                </SelectTrigger>
+              );
+            })()}
+            <SelectContent>
+              {years.map((y) => (
+                <SelectItem key={y.id} value={y.id}>
+                  {y.name} {y.isActive ? "(Activ)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <Select
-          value={selectedYearId}
-          onValueChange={(v) => { if (v) router.push(`/admin/incadrari?an=${v}`); }}
+          value={selectedTeacherId ?? "all"}
+          onValueChange={(v) => buildUrl({ profesor: !v || v === "all" ? undefined : v })}
         >
-          {(() => {
-            const y = years.find((y) => y.id === selectedYearId);
-            return (
-              <SelectTrigger className="w-48">
-                <SelectValue>
-                  {y ? `${y.name}${y.isActive ? " (Activ)" : ""}` : "Selectați"}
-                </SelectValue>
-              </SelectTrigger>
-            );
-          })()}
+          <SelectTrigger className="w-44">
+            <SelectValue>
+              {selectedTeacherId
+                ? (() => {
+                    const t = teachers.find((x) => x.id === selectedTeacherId);
+                    return t ? `${t.lastName} ${t.firstName}` : "Toți profesorii";
+                  })()
+                : "Toți profesorii"}
+            </SelectValue>
+          </SelectTrigger>
           <SelectContent>
-            {years.map((y) => (
-              <SelectItem key={y.id} value={y.id}>
-                {y.name} {y.isActive ? "(Activ)" : ""}
+            <SelectItem value="all">Toți profesorii</SelectItem>
+            {teachers.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.lastName} {t.firstName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={selectedClassId ?? "all"}
+          onValueChange={(v) => buildUrl({ clasa: !v || v === "all" ? undefined : v })}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue>
+              {selectedClassId
+                ? (classes.find((c) => c.id === selectedClassId)?.name ?? "Toate clasele")
+                : "Toate clasele"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toate clasele</SelectItem>
+            {classes.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={selectedSubjectId ?? "all"}
+          onValueChange={(v) => buildUrl({ materie: !v || v === "all" ? undefined : v })}
+        >
+          <SelectTrigger className="w-44">
+            <SelectValue>
+              {selectedSubjectId
+                ? (() => {
+                    const s = subjects.find((x) => x.id === selectedSubjectId);
+                    return s ? `${s.name}` : "Toate materiile";
+                  })()
+                : "Toate materiile"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toate materiile</SelectItem>
+            {subjects.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -112,7 +192,7 @@ export function AssignmentsView({ years, selectedYearId, classes, subjects, assi
 
       {assignments.length === 0 ? (
         <div className="rounded-xl border bg-white p-12 text-center text-muted-foreground">
-          Nicio încadrare înregistrată. Adăugați prima încadrare.
+          Nicio încadrare pentru filtrele selectate.
         </div>
       ) : (
         <div className="rounded-xl border bg-white overflow-hidden">
@@ -122,7 +202,6 @@ export function AssignmentsView({ years, selectedYearId, classes, subjects, assi
                 <TableHead>Profesor</TableHead>
                 <TableHead>Materie</TableHead>
                 <TableHead>Clasă</TableHead>
-                <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -142,36 +221,12 @@ export function AssignmentsView({ years, selectedYearId, classes, subjects, assi
                   <TableCell className="text-muted-foreground">
                     {a.className}
                   </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-red-50"
-                      disabled={isPending && deletingId === a.id}
-                      onClick={() => handleDelete(a.id)}
-                    >
-                      {isPending && deletingId === a.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
-
-      <AssignmentModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        academicYearId={selectedYearId}
-        teachers={teachers}
-        classes={classes}
-        subjects={subjects}
-      />
     </div>
   );
 }

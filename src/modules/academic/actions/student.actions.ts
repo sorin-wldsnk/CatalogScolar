@@ -137,3 +137,25 @@ export async function updateStudentStatus(id: string, status: string) {
   revalidatePath("/admin/elevi");
   return { success: true };
 }
+
+export async function unenrollStudent(enrollmentId: string, classId: string) {
+  const session = await auth();
+  if (!session?.user) return { success: false, error: "Neautentificat" };
+
+  const roles = (session as { roles?: string[] }).roles ?? [];
+  if (!(await can(roles, "enrollment", "create" as never))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const schoolId = (session as { schoolId?: string }).schoolId;
+  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
+
+  await db
+    .update(enrollment)
+    .set({ status: "WITHDRAWN", updatedAt: new Date() })
+    .where(and(eq(enrollment.id, enrollmentId), eq(enrollment.schoolId, schoolId)));
+
+  revalidatePath("/admin/elevi");
+  revalidatePath(`/admin/clase/${classId}`);
+  return { success: true };
+}
