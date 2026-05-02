@@ -17,7 +17,7 @@ export default async function CatalogPage({
   if (!session?.user) redirect("/login");
 
   const schoolId = (session as { schoolId?: string }).schoolId;
-  const userId = (session as { userId?: string }).userId;
+  const userId = session?.user?.id;
   if (!schoolId || !userId) redirect("/dashboard");
 
   const params = await searchParams;

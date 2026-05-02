@@ -18,7 +18,7 @@ export default async function PanouParintePage({
   if (!roles.includes("PARENT")) redirect("/dashboard");
 
   const schoolId = (session as { schoolId?: string }).schoolId;
-  const userId = (session as { userId?: string }).userId;
+  const userId = session?.user?.id;
   if (!schoolId || !userId) redirect("/dashboard");
 
   const params = await searchParams;

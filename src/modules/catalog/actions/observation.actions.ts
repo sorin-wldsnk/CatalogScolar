@@ -22,7 +22,7 @@ async function getSessionCtx() {
   if (!session?.user) return null;
   const schoolId = (session as { schoolId?: string }).schoolId;
   const roles = (session as { roles?: string[] }).roles ?? [];
-  const userId = (session as { userId?: string }).userId;
+  const userId = session?.user?.id;
   if (!schoolId || !userId) return null;
   return { schoolId, roles, userId };
 }
