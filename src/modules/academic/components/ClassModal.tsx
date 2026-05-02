@@ -87,11 +87,14 @@ export function ClassModal({ open, onClose, academicYearId }: Props) {
                 <SelectValue placeholder="Selectați nivelul" />
               </SelectTrigger>
               <SelectContent>
-                {Array.from({ length: 9 }, (_, i) => (
-                  <SelectItem key={i} value={String(i)}>
-                    Clasa {i === 0 ? "Pregătitoare" : i}
-                  </SelectItem>
-                ))}
+                {Array.from({ length: 9 }, (_, i) => {
+                  const label = i === 0 ? "Clasa Pregătitoare" : `Clasa ${i}`;
+                  return (
+                    <SelectItem key={i} value={String(i)} label={label}>
+                      {label}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             {errors.gradeLevel && <p className="text-xs text-destructive">{errors.gradeLevel.message}</p>}
