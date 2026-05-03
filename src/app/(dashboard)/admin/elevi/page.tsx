@@ -44,6 +44,7 @@ export default async function EleviPage({
       students={students}
       selectedClassId={params.clasa}
       selectedStatus={params.status}
+      roles={roles}
     />
   );
 }

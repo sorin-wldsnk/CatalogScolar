@@ -23,6 +23,8 @@ import {
 import { StudentModal } from "./StudentModal";
 import { EditStudentModal } from "./EditStudentModal";
 import { StudentPanel } from "./StudentPanel";
+import { CsvImportModal } from "./CsvImportModal";
+import { usePermissions } from "@/lib/permissions";
 import type { AcademicYear } from "@/db/schema";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -53,6 +55,7 @@ interface Props {
   students: StudentRow[];
   selectedClassId?: string;
   selectedStatus?: string;
+  roles?: string[];
 }
 
 export function StudentsView({
@@ -62,8 +65,11 @@ export function StudentsView({
   students,
   selectedClassId,
   selectedStatus,
+  roles = [],
 }: Props) {
+  const { canAddStudent } = usePermissions(roles);
   const [modalOpen, setModalOpen] = useState(false);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [editStudent, setEditStudent] = useState<StudentRow | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
   const router = useRouter();
@@ -85,19 +91,21 @@ export function StudentsView({
               {students.length} elevi {selectedClassId ? "în clasa selectată" : "în total"}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" disabled title="Disponibil în faza următoare">
-              <Upload className="h-4 w-4 mr-2" />
-              Import CSV
-            </Button>
-            <Button
-              onClick={() => setModalOpen(true)}
-              className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Elev nou
-            </Button>
-          </div>
+          {canAddStudent && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setCsvImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
+              <Button
+                onClick={() => setModalOpen(true)}
+                className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Elev nou
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Filters */}
@@ -242,6 +250,11 @@ export function StudentsView({
           student={editStudent}
         />
       )}
+      <CsvImportModal
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        academicYearId={selectedYearId}
+      />
     </div>
   );
 }

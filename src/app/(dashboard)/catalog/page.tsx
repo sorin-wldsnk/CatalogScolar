@@ -90,6 +90,7 @@ export default async function CatalogPage({
       homeroomClassId={homeroomClassId}
       pendingAbsences={pendingAbsences}
       classObservations={classObservations}
+      roles={roles}
     />
   );
 }

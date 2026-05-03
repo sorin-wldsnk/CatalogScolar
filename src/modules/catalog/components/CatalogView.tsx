@@ -24,6 +24,7 @@ import { GradeModal } from "./GradeModal";
 import { AbsenceModal } from "./AbsenceModal";
 import { HomeroomTabs } from "./HomeroomTabs";
 import { computeAverage, getGradingScale } from "@/lib/grading";
+import { usePermissions } from "@/lib/permissions";
 import type { CatalogStudentRow } from "@/modules/catalog/queries/catalog.queries";
 import type { PendingAbsenceRow, ClassObservationRow } from "@/modules/catalog/queries/homeroom.queries";
 
@@ -43,6 +44,7 @@ interface Props {
   homeroomClassId?: string | null;
   pendingAbsences?: PendingAbsenceRow[];
   classObservations?: ClassObservationRow[];
+  roles?: string[];
 }
 
 interface ActiveModal {
@@ -64,10 +66,12 @@ export function CatalogView({
   homeroomClassId,
   pendingAbsences = [],
   classObservations = [],
+  roles = [],
 }: Props) {
   const router = useRouter();
   const [activeModal, setActiveModal] = useState<ActiveModal | null>(null);
   const [homeroomTab, setHomeroomTab] = useState<"motivari" | "observatii">("motivari");
+  const { canAddGrade, canAddAbsence } = usePermissions(roles);
 
   const isViewingHomeroomClass = isHomeroom && homeroomClassId && selectedClassId === homeroomClassId;
 
@@ -287,36 +291,40 @@ export function CatalogView({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 w-7 p-0"
-                              title="Notă nouă"
-                              onClick={() =>
-                                setActiveModal({
-                                  type: "grade",
-                                  enrollmentId: s.enrollmentId,
-                                  studentName: `${s.lastName} ${s.firstName}`,
-                                })
-                              }
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 w-7 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
-                              title="Absență nouă"
-                              onClick={() =>
-                                setActiveModal({
-                                  type: "absence",
-                                  enrollmentId: s.enrollmentId,
-                                  studentName: `${s.lastName} ${s.firstName}`,
-                                })
-                              }
-                            >
-                              <CalendarX2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {canAddGrade && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 w-7 p-0"
+                                title="Notă nouă"
+                                onClick={() =>
+                                  setActiveModal({
+                                    type: "grade",
+                                    enrollmentId: s.enrollmentId,
+                                    studentName: `${s.lastName} ${s.firstName}`,
+                                  })
+                                }
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {canAddAbsence && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 w-7 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
+                                title="Absență nouă"
+                                onClick={() =>
+                                  setActiveModal({
+                                    type: "absence",
+                                    enrollmentId: s.enrollmentId,
+                                    studentName: `${s.lastName} ${s.firstName}`,
+                                  })
+                                }
+                              >
+                                <CalendarX2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Link
                               href={`/catalog/${selectedClassId}/${s.studentId}`}
                               className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"

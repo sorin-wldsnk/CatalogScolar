@@ -12,10 +12,12 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  const roles = (session as { roles?: string[] }).roles ?? [];
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-gray-50">
-        <AppSidebar />
+        <AppSidebar roles={roles} />
         <div className="flex flex-col flex-1 min-w-0">
           <DashboardHeader userName={session.user.name} />
           <main className="flex-1 p-6">{children}</main>

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/sidebar";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/lib/permissions";
 import { useState } from "react";
 
 const navItems = [
@@ -85,10 +86,11 @@ function NavLink({
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({ roles = [] }: { roles?: string[] }) {
   const pathname = usePathname();
   const isAdminSection = pathname.startsWith("/admin");
   const [adminOpen, setAdminOpen] = useState(isAdminSection);
+  const { canViewAdminPanel } = usePermissions(roles);
 
   return (
     <Sidebar>
@@ -124,6 +126,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {canViewAdminPanel && (
         <SidebarGroup className="mt-4">
           <SidebarGroupLabel className="text-white/50 text-xs font-semibold uppercase tracking-wider px-3 mb-1">
             Sistem
@@ -186,6 +189,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border px-3 py-3">
