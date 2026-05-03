@@ -22,8 +22,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { GradeModal } from "./GradeModal";
 import { AbsenceModal } from "./AbsenceModal";
+import { HomeroomTabs } from "./HomeroomTabs";
 import { computeAverage, getGradingScale } from "@/lib/grading";
 import type { CatalogStudentRow } from "@/modules/catalog/queries/catalog.queries";
+import type { PendingAbsenceRow, ClassObservationRow } from "@/modules/catalog/queries/homeroom.queries";
 
 interface ClassRow { id: string; name: string; }
 interface SubjectRow { id: string; name: string; }
@@ -37,6 +39,10 @@ interface Props {
   gradeLevel: number | null;
   academicYearId: string;
   students: CatalogStudentRow[];
+  isHomeroom?: boolean;
+  homeroomClassId?: string | null;
+  pendingAbsences?: PendingAbsenceRow[];
+  classObservations?: ClassObservationRow[];
 }
 
 interface ActiveModal {
@@ -54,9 +60,16 @@ export function CatalogView({
   gradeLevel,
   academicYearId,
   students,
+  isHomeroom = false,
+  homeroomClassId,
+  pendingAbsences = [],
+  classObservations = [],
 }: Props) {
   const router = useRouter();
   const [activeModal, setActiveModal] = useState<ActiveModal | null>(null);
+  const [homeroomTab, setHomeroomTab] = useState<"motivari" | "observatii">("motivari");
+
+  const isViewingHomeroomClass = isHomeroom && homeroomClassId && selectedClassId === homeroomClassId;
 
   function buildUrl(params: Record<string, string | number | undefined>) {
     const url = new URLSearchParams();
@@ -127,8 +140,8 @@ export function CatalogView({
         </Select>
       </div>
 
-      {/* Semester tabs */}
-      {selectedClassId && selectedSubjectId && (
+      {/* Semester + homeroom tabs */}
+      {selectedClassId && (
         <div className="border-b border-gray-200">
           <div className="flex gap-0">
             {([1, 2] as const).map((sem) => (
@@ -137,7 +150,7 @@ export function CatalogView({
                 onClick={() => buildUrl({ sem })}
                 className={[
                   "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
-                  selectedSemester === sem
+                  selectedSemester === sem && !homeroomTab
                     ? "border-[#1e5fa8] text-[#1e5fa8]"
                     : "border-transparent text-muted-foreground hover:text-gray-700",
                 ].join(" ")}
@@ -145,19 +158,63 @@ export function CatalogView({
                 Semestrul {sem}
               </button>
             ))}
+            {isViewingHomeroomClass && (
+              <>
+                <button
+                  onClick={() => setHomeroomTab("motivari")}
+                  className={[
+                    "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+                    homeroomTab === "motivari"
+                      ? "border-[#1e5fa8] text-[#1e5fa8]"
+                      : "border-transparent text-muted-foreground hover:text-gray-700",
+                  ].join(" ")}
+                >
+                  Motivări în așteptare
+                  {pendingAbsences.length > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                      {pendingAbsences.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setHomeroomTab("observatii")}
+                  className={[
+                    "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+                    homeroomTab === "observatii"
+                      ? "border-[#1e5fa8] text-[#1e5fa8]"
+                      : "border-transparent text-muted-foreground hover:text-gray-700",
+                  ].join(" ")}
+                >
+                  Observații clasă
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
 
+      {/* Homeroom special tabs */}
+      {isViewingHomeroomClass && (homeroomTab === "motivari" || homeroomTab === "observatii") && (
+        <HomeroomTabs
+          activeTab={homeroomTab}
+          pendingAbsences={pendingAbsences}
+          observations={classObservations}
+          enrollmentIdByStudent={{}}
+          academicYearId={academicYearId}
+          semester={selectedSemester}
+          classId={selectedClassId}
+        />
+      )}
+
       {/* Empty state */}
-      {(!selectedClassId || !selectedSubjectId) && (
+      {(!selectedClassId || !selectedSubjectId) && !(isViewingHomeroomClass && (homeroomTab === "motivari" || homeroomTab === "observatii")) && (
         <div className="rounded-xl border bg-white p-12 text-center text-muted-foreground">
           Selectați clasa și materia pentru a vizualiza catalogul.
         </div>
       )}
 
       {/* Grade table */}
-      {selectedClassId && selectedSubjectId && (
+      {selectedClassId && selectedSubjectId && !(isViewingHomeroomClass && (homeroomTab === "motivari" || homeroomTab === "observatii")) && (
         <>
           {students.length === 0 ? (
             <div className="rounded-xl border bg-white p-12 text-center text-muted-foreground">
