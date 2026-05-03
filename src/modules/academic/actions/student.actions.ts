@@ -14,6 +14,8 @@ const studentSchema = z.object({
   lastName: z.string().min(1, "Numele este obligatoriu"),
   dateOfBirth: z.string().optional().nullable(),
   personalId: z.string().optional().nullable(),
+  classId: z.string().uuid().optional().nullable(),
+  academicYearId: z.string().uuid().optional().nullable(),
 });
 
 export async function createStudent(data: unknown) {
@@ -33,17 +35,38 @@ export async function createStudent(data: unknown) {
   const schoolId = (session as { schoolId?: string }).schoolId;
   if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
 
-  const [s] = await db
-    .insert(student)
-    .values({
-      schoolId,
-      firstName: normalizeDiacritics(parsed.data.firstName),
-      lastName: normalizeDiacritics(parsed.data.lastName),
-      dateOfBirth: parsed.data.dateOfBirth || null,
-      personalId: parsed.data.personalId?.trim() || null,
-      status: "ACTIVE",
-    })
-    .returning();
+  const { classId, academicYearId } = parsed.data;
+
+  const s = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(student)
+      .values({
+        schoolId,
+        firstName: normalizeDiacritics(parsed.data.firstName),
+        lastName: normalizeDiacritics(parsed.data.lastName),
+        dateOfBirth: parsed.data.dateOfBirth || null,
+        personalId: parsed.data.personalId?.trim() || null,
+        status: "ACTIVE",
+      })
+      .returning();
+
+    if (classId && academicYearId) {
+      const today = new Date().toISOString().split("T")[0];
+      await tx
+        .insert(enrollment)
+        .values({
+          schoolId,
+          studentId: inserted.id,
+          classId,
+          academicYearId,
+          enrolledAt: today,
+          status: "ACTIVE",
+        })
+        .onConflictDoNothing();
+    }
+
+    return inserted;
+  });
 
   revalidatePath("/admin/elevi");
   return { success: true, data: s };

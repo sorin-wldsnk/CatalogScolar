@@ -217,7 +217,12 @@ export function StudentsView({
         />
       )}
 
-      <StudentModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <StudentModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        classId={selectedClassId}
+        academicYearId={selectedYearId}
+      />
     </div>
   );
 }

@@ -30,9 +30,11 @@ type FormValues = z.infer<typeof schema>;
 interface Props {
   open: boolean;
   onClose: () => void;
+  classId?: string;
+  academicYearId?: string;
 }
 
-export function StudentModal({ open, onClose }: Props) {
+export function StudentModal({ open, onClose, classId, academicYearId }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const {
@@ -44,7 +46,7 @@ export function StudentModal({ open, onClose }: Props) {
 
   function onSubmit(data: FormValues) {
     startTransition(async () => {
-      const result = await createStudent(data);
+      const result = await createStudent({ ...data, classId, academicYearId });
       if (result.success) {
         toast.success("Elevul a fost adăugat");
         reset();
