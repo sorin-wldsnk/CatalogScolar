@@ -78,7 +78,7 @@ export async function addGrade(data: unknown) {
       gradeType: parsed.data.gradeType,
       weight: String(parsed.data.weight ?? 1),
       notes: parsed.data.notes ? normalizeDiacritics(parsed.data.notes) : null,
-      gradedAt: parsed.data.gradedAt ?? new Date().toISOString().split("T")[0],
+      gradedAt: parsed.data.gradedAt || new Date().toISOString().split("T")[0],
     })
     .returning();
 

@@ -12,7 +12,7 @@ const absenceSchema = z.object({
   subjectId: z.string().uuid(),
   academicYearId: z.string().uuid(),
   semester: z.coerce.number().int().min(1).max(2),
-  absentDate: z.string(),
+  absentDate: z.string().min(1, "Data absenței este obligatorie"),
   period: z.coerce.number().int().min(1).max(8).optional().nullable(),
 });
 

@@ -39,8 +39,8 @@ export async function createStudent(data: unknown) {
       schoolId,
       firstName: normalizeDiacritics(parsed.data.firstName),
       lastName: normalizeDiacritics(parsed.data.lastName),
-      dateOfBirth: parsed.data.dateOfBirth ?? null,
-      personalId: parsed.data.personalId ?? null,
+      dateOfBirth: parsed.data.dateOfBirth || null,
+      personalId: parsed.data.personalId?.trim() || null,
       status: "ACTIVE",
     })
     .returning();
@@ -68,6 +68,8 @@ export async function updateStudent(id: string, data: unknown) {
 
   const updateData: Partial<typeof parsed.data & { updatedAt: Date }> = {
     ...parsed.data,
+    dateOfBirth: parsed.data.dateOfBirth || null,
+    personalId: parsed.data.personalId?.trim() || null,
     updatedAt: new Date(),
   };
   if (parsed.data.firstName) updateData.firstName = normalizeDiacritics(parsed.data.firstName);
