@@ -22,6 +22,13 @@
       "when": 1777746751251,
       "tag": "0002_brown_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777824526240,
+      "tag": "0003_plain_senator_kelly",
+      "breakpoints": true
     }
   ]
 }

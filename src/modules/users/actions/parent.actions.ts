@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { appUser, schoolMembership, userRole, role, studentGuardian } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
 import { can } from "@/lib/casbin";
 import { normalizeDiacritics } from "@/lib/diacritics";
@@ -120,4 +120,52 @@ export async function createParent(data: unknown) {
     }
     return { success: false, error: "Eroare la creare" };
   }
+}
+
+const updateGuardianSchema = z.object({
+  guardianUserId: z.string().uuid(),
+  firstName: z.string().min(1, "Prenumele este obligatoriu"),
+  lastName: z.string().min(1, "Numele este obligatoriu"),
+  email: z.string().email("Email invalid"),
+  phone: z.string().optional().nullable(),
+  relationship: z.enum(["PARENT", "GRANDPARENT", "LEGAL_GUARDIAN", "OTHER"]),
+  guardianId: z.string().uuid(),
+});
+
+export async function updateGuardian(data: unknown) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "class", "create"))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const parsed = updateGuardianSchema.safeParse(data);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(appUser)
+      .set({
+        firstName: normalizeDiacritics(parsed.data.firstName),
+        lastName: normalizeDiacritics(parsed.data.lastName),
+        email: parsed.data.email.toLowerCase().trim(),
+        phone: parsed.data.phone?.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(appUser.id, parsed.data.guardianUserId));
+
+    await tx
+      .update(studentGuardian)
+      .set({ relationship: parsed.data.relationship, updatedAt: new Date() })
+      .where(
+        and(
+          eq(studentGuardian.id, parsed.data.guardianId),
+          eq(studentGuardian.schoolId, ctx.schoolId)
+        )
+      );
+  });
+
+  revalidatePath("/admin/elevi");
+  return { success: true };
 }

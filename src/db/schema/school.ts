@@ -8,6 +8,7 @@ export const school = pgTable("school", {
   address: text("address"),
   phone: text("phone"),
   email: text("email"),
+  cif: text("cif"),
   logoUrl: text("logo_url"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

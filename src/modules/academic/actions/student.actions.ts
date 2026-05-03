@@ -1,13 +1,15 @@
 "use server";
 
 import { db } from "@/db";
-import { student, enrollment } from "@/db/schema";
+import { student, enrollment, appUser, schoolMembership, userRole, role, studentGuardian } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
 import { can } from "@/lib/casbin";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { normalizeDiacritics } from "@/lib/diacritics";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 
 const studentSchema = z.object({
   firstName: z.string().min(1, "Prenumele este obligatoriu"),
@@ -16,14 +18,28 @@ const studentSchema = z.object({
   personalId: z.string().optional().nullable(),
   classId: z.string().uuid().optional().nullable(),
   academicYearId: z.string().uuid().optional().nullable(),
+  // optional parent fields
+  parentFirstName: z.string().optional().nullable(),
+  parentLastName: z.string().optional().nullable(),
+  parentEmail: z.string().email("Email părinte invalid").optional().or(z.literal("")).nullable(),
+  parentPhone: z.string().optional().nullable(),
+  parentRelationship: z.enum(["PARENT", "GRANDPARENT", "LEGAL_GUARDIAN", "OTHER"]).optional().nullable(),
 });
 
-export async function createStudent(data: unknown) {
+async function getSessionCtx() {
   const session = await auth();
-  if (!session?.user) return { success: false, error: "Neautentificat" };
-
+  if (!session?.user) return null;
+  const schoolId = (session as { schoolId?: string }).schoolId;
   const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "student", "create" as never))) {
+  if (!schoolId) return null;
+  return { schoolId, roles };
+}
+
+export async function createStudent(data: unknown) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "student", "create" as never))) {
     return { success: false, error: "Nu aveți permisiunea necesară" };
   }
 
@@ -32,65 +48,116 @@ export async function createStudent(data: unknown) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
+  const { classId, academicYearId, parentEmail, parentFirstName, parentLastName, parentPhone, parentRelationship } = parsed.data;
+  const hasParent = !!(parentEmail && parentEmail.trim());
 
-  const { classId, academicYearId } = parsed.data;
-
-  const s = await db.transaction(async (tx) => {
-    const [inserted] = await tx
-      .insert(student)
-      .values({
-        schoolId,
-        firstName: normalizeDiacritics(parsed.data.firstName),
-        lastName: normalizeDiacritics(parsed.data.lastName),
-        dateOfBirth: parsed.data.dateOfBirth || null,
-        personalId: parsed.data.personalId?.trim() || null,
-        status: "ACTIVE",
-      })
-      .returning();
-
-    if (classId && academicYearId) {
-      const today = new Date().toISOString().split("T")[0];
-      await tx
-        .insert(enrollment)
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(student)
         .values({
-          schoolId,
-          studentId: inserted.id,
-          classId,
-          academicYearId,
-          enrolledAt: today,
+          schoolId: ctx.schoolId,
+          firstName: normalizeDiacritics(parsed.data.firstName),
+          lastName: normalizeDiacritics(parsed.data.lastName),
+          dateOfBirth: parsed.data.dateOfBirth || null,
+          personalId: parsed.data.personalId?.trim() || null,
           status: "ACTIVE",
         })
-        .onConflictDoNothing();
+        .returning();
+
+      if (classId && academicYearId) {
+        const today = new Date().toISOString().split("T")[0];
+        await tx
+          .insert(enrollment)
+          .values({
+            schoolId: ctx.schoolId,
+            studentId: inserted.id,
+            classId,
+            academicYearId,
+            enrolledAt: today,
+            status: "ACTIVE",
+          })
+          .onConflictDoNothing();
+      }
+
+      let tempPassword: string | undefined;
+
+      if (hasParent) {
+        tempPassword = randomBytes(8).toString("base64url");
+        const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+        const [parentUser] = await tx
+          .insert(appUser)
+          .values({
+            firstName: normalizeDiacritics(parentFirstName?.trim() || "Tutore"),
+            lastName: normalizeDiacritics(parentLastName?.trim() || ""),
+            email: parentEmail!.toLowerCase().trim(),
+            passwordHash,
+            phone: parentPhone?.trim() || null,
+            mustChangeOnLogin: true,
+            isActive: true,
+          })
+          .returning({ id: appUser.id });
+
+        const [membership] = await tx
+          .insert(schoolMembership)
+          .values({ schoolId: ctx.schoolId, userId: parentUser.id, isActive: true })
+          .returning({ id: schoolMembership.id });
+
+        const [parentRole] = await tx
+          .select({ id: role.id })
+          .from(role)
+          .where(eq(role.code, "PARENT"))
+          .limit(1);
+
+        if (parentRole) {
+          await tx.insert(userRole).values({ membershipId: membership.id, roleId: parentRole.id });
+        }
+
+        await tx.insert(studentGuardian).values({
+          schoolId: ctx.schoolId,
+          studentId: inserted.id,
+          guardianUserId: parentUser.id,
+          relationship: parentRelationship ?? "PARENT",
+          isPrimary: true,
+        });
+      }
+
+      return { student: inserted, tempPassword };
+    });
+
+    revalidatePath("/admin/elevi");
+    return { success: true, data: result.student, parentPassword: result.tempPassword };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("unique") || msg.includes("duplicate")) {
+      return { success: false, error: "Există deja un cont cu acest email" };
     }
-
-    return inserted;
-  });
-
-  revalidatePath("/admin/elevi");
-  return { success: true, data: s };
+    return { success: false, error: "Eroare la creare" };
+  }
 }
 
 export async function updateStudent(id: string, data: unknown) {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Neautentificat" };
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
 
-  const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "student", "create" as never))) {
+  if (!(await can(ctx.roles, "student", "create" as never))) {
     return { success: false, error: "Nu aveți permisiunea necesară" };
   }
 
-  const parsed = studentSchema.partial().safeParse(data);
+  const updateSchema = z.object({
+    firstName: z.string().min(1).optional(),
+    lastName: z.string().min(1).optional(),
+    dateOfBirth: z.string().optional().nullable(),
+    personalId: z.string().optional().nullable(),
+  });
+
+  const parsed = updateSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
-
-  const updateData: Partial<typeof parsed.data & { updatedAt: Date }> = {
-    ...parsed.data,
+  const updateData: Record<string, unknown> = {
     dateOfBirth: parsed.data.dateOfBirth || null,
     personalId: parsed.data.personalId?.trim() || null,
     updatedAt: new Date(),
@@ -101,7 +168,7 @@ export async function updateStudent(id: string, data: unknown) {
   const [s] = await db
     .update(student)
     .set(updateData)
-    .where(and(eq(student.id, id), eq(student.schoolId, schoolId)))
+    .where(and(eq(student.id, id), eq(student.schoolId, ctx.schoolId)))
     .returning();
 
   revalidatePath("/admin/elevi");
@@ -113,22 +180,18 @@ export async function enrollStudent(
   classId: string,
   academicYearId: string
 ) {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Neautentificat" };
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
 
-  const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "enrollment", "create" as never))) {
+  if (!(await can(ctx.roles, "enrollment", "create" as never))) {
     return { success: false, error: "Nu aveți permisiunea necesară" };
   }
-
-  const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
 
   const today = new Date().toISOString().split("T")[0];
   const [e] = await db
     .insert(enrollment)
     .values({
-      schoolId,
+      schoolId: ctx.schoolId,
       studentId,
       classId,
       academicYearId,
@@ -143,42 +206,34 @@ export async function enrollStudent(
 }
 
 export async function updateStudentStatus(id: string, status: string) {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Neautentificat" };
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
 
-  const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "student", "create" as never))) {
+  if (!(await can(ctx.roles, "student", "create" as never))) {
     return { success: false, error: "Nu aveți permisiunea necesară" };
   }
-
-  const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
 
   await db
     .update(student)
     .set({ status, updatedAt: new Date() })
-    .where(and(eq(student.id, id), eq(student.schoolId, schoolId)));
+    .where(and(eq(student.id, id), eq(student.schoolId, ctx.schoolId)));
 
   revalidatePath("/admin/elevi");
   return { success: true };
 }
 
 export async function unenrollStudent(enrollmentId: string, classId: string) {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Neautentificat" };
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
 
-  const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "enrollment", "create" as never))) {
+  if (!(await can(ctx.roles, "enrollment", "create" as never))) {
     return { success: false, error: "Nu aveți permisiunea necesară" };
   }
-
-  const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
 
   await db
     .update(enrollment)
     .set({ status: "WITHDRAWN", updatedAt: new Date() })
-    .where(and(eq(enrollment.id, enrollmentId), eq(enrollment.schoolId, schoolId)));
+    .where(and(eq(enrollment.id, enrollmentId), eq(enrollment.schoolId, ctx.schoolId)));
 
   revalidatePath("/admin/elevi");
   revalidatePath(`/admin/clase/${classId}`);

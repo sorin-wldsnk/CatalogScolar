@@ -16,6 +16,7 @@ import {
   BookMarked,
   ClipboardList,
   CalendarDays,
+  School,
 } from "lucide-react";
 import {
   Sidebar,
@@ -41,6 +42,7 @@ const navItems = [
 ];
 
 const adminSubItems = [
+  { href: "/admin/scoala", label: "Școala mea", icon: School },
   { href: "/admin/ani-scolari", label: "Ani școlari", icon: CalendarDays },
   { href: "/admin/clase", label: "Clase", icon: GraduationCap },
   { href: "/admin/profesori", label: "Profesori", icon: UserCog },

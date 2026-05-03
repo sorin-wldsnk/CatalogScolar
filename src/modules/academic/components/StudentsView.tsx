@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Upload, ChevronRight } from "lucide-react";
+import { Plus, Upload, ChevronRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StudentModal } from "./StudentModal";
+import { EditStudentModal } from "./EditStudentModal";
 import { StudentPanel } from "./StudentPanel";
 import type { AcademicYear } from "@/db/schema";
 
@@ -63,6 +64,7 @@ export function StudentsView({
   selectedStatus,
 }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [editStudent, setEditStudent] = useState<StudentRow | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
   const router = useRouter();
 
@@ -198,7 +200,17 @@ export function StudentsView({
                         )}
                       </TableCell>
                       <TableCell>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={(e) => { e.stopPropagation(); setEditStudent(s); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -223,6 +235,13 @@ export function StudentsView({
         classId={selectedClassId}
         academicYearId={selectedYearId}
       />
+      {editStudent && (
+        <EditStudentModal
+          open={!!editStudent}
+          onClose={() => setEditStudent(null)}
+          student={editStudent}
+        />
+      )}
     </div>
   );
 }

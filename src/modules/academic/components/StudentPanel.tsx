@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, User, Users, History, Plus } from "lucide-react";
+import { X, User, Users, History, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { fetchStudentGuardians } from "@/modules/users/actions/parent.actions";
 import { ParentCreateModal } from "@/modules/users/components/ParentCreateModal";
+import { EditStudentModal } from "./EditStudentModal";
 
 type Tab = "date" | "tutori" | "istoric";
 
@@ -50,6 +51,7 @@ export function StudentPanel({ student, onClose }: Props) {
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [loadingGuardians, setLoadingGuardians] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const loadGuardians = useCallback(async () => {
     setLoadingGuardians(true);
@@ -78,9 +80,14 @@ export function StudentPanel({ student, onClose }: Props) {
             {student.className ?? "Fără clasă"}
           </p>
         </div>
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Editează" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -176,6 +183,11 @@ export function StudentPanel({ student, onClose }: Props) {
         studentId={student.id}
         studentName={studentName}
         onCreated={loadGuardians}
+      />
+      <EditStudentModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        student={student}
       />
     </div>
   );
