@@ -3,11 +3,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login"];
+const CHANGE_PASSWORD_PATH = "/schimba-parola";
 
 export default auth(function proxy(req: NextRequest & { auth?: unknown }) {
   const { pathname } = req.nextUrl;
-  const session = (req as { auth?: { user?: unknown; roles?: string[] } }).auth;
+  const session = (req as { auth?: { user?: unknown; roles?: string[]; mustChangeOnLogin?: boolean } }).auth;
   const roles: string[] = (session as { roles?: string[] })?.roles ?? [];
+  const mustChange: boolean = (session as { mustChangeOnLogin?: boolean })?.mustChangeOnLogin ?? false;
 
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     if (session?.user) {
@@ -19,6 +21,11 @@ export default auth(function proxy(req: NextRequest & { auth?: unknown }) {
 
   if (!session?.user) {
     return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  // Force password change before accessing anything else
+  if (mustChange && pathname !== CHANGE_PASSWORD_PATH) {
+    return NextResponse.redirect(new URL(CHANGE_PASSWORD_PATH, req.url));
   }
 
   // PARENT users can only access /panou-parinte and /api routes

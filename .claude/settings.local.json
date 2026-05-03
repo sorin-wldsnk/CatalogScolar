@@ -13,7 +13,9 @@
       "Bash(git -C /home/sorin/CatalogScolar status --short)",
       "Bash(git *)",
       "Bash(pnpm build *)",
-      "Bash(pnpm drizzle-kit *)"
+      "Bash(pnpm drizzle-kit *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(pnpm add *)"
     ]
   }
 }

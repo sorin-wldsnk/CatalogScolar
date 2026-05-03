@@ -28,8 +28,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { AssignTeacherModal } from "./AssignTeacherModal";
+import { ClassParentsTab } from "./ClassParentsTab";
 import { enrollStudent, unenrollStudent } from "@/modules/academic/actions/student.actions";
 import { removeClassSubjectTeacher } from "@/modules/academic/actions/teaching-assignment.actions";
+import type { ClassParentRow } from "@/modules/academic/queries/class-parents.queries";
 
 interface SubjectRow {
   subjectId: string;
@@ -62,10 +64,12 @@ interface Props {
   className: string;
   gradeLevel: number;
   academicYearId: string;
+  academicYearName: string;
   subjects: SubjectRow[];
   students: StudentRow[];
   unenrolledStudents: UnenrolledStudent[];
   teachers: Teacher[];
+  parents: ClassParentRow[];
 }
 
 export function ClassDetailView({
@@ -73,12 +77,14 @@ export function ClassDetailView({
   className,
   gradeLevel,
   academicYearId,
+  academicYearName,
   subjects,
   students,
   unenrolledStudents,
   teachers,
+  parents,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"elevi" | "incadrari">("elevi");
+  const [activeTab, setActiveTab] = useState<"elevi" | "incadrari" | "parinti">("elevi");
   const [assignModal, setAssignModal] = useState<SubjectRow | null>(null);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
@@ -139,22 +145,26 @@ export function ClassDetailView({
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex gap-0">
-          {(["elevi", "incadrari"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={[
-                "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
-                activeTab === tab
-                  ? "border-[#1e5fa8] text-[#1e5fa8]"
-                  : "border-transparent text-muted-foreground hover:text-gray-700",
-              ].join(" ")}
-            >
-              {tab === "elevi"
-                ? `Elevi (${students.length})`
-                : `Încadrări (${subjects.filter((s) => s.assignmentId).length}/${subjects.length})`}
-            </button>
-          ))}
+          {(["elevi", "incadrari", "parinti"] as const).map((tab) => {
+            const label =
+              tab === "elevi" ? `Elevi (${students.length})`
+              : tab === "incadrari" ? `Încadrări (${subjects.filter((s) => s.assignmentId).length}/${subjects.length})`
+              : `Părinți (${parents.length})`;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={[
+                  "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+                  activeTab === tab
+                    ? "border-[#1e5fa8] text-[#1e5fa8]"
+                    : "border-transparent text-muted-foreground hover:text-gray-700",
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -330,6 +340,17 @@ export function ClassDetailView({
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {/* Tab: Părinți */}
+      {activeTab === "parinti" && (
+        <ClassParentsTab
+          classId={classId}
+          className={className}
+          academicYearId={academicYearId}
+          academicYearName={academicYearName}
+          parents={parents}
+        />
       )}
 
       {/* Assign teacher modal */}

@@ -6,6 +6,7 @@ import { getActiveAcademicYear } from "@/modules/academic/queries/academic-year.
 import { getClassSubjectMatrix } from "@/modules/academic/queries/teaching-assignment.queries";
 import { getStudents, getUnenrolledStudents } from "@/modules/academic/queries/student.queries";
 import { getTeachers } from "@/modules/users/queries/teacher.queries";
+import { getClassParents } from "@/modules/academic/queries/class-parents.queries";
 import { ClassDetailView } from "@/modules/academic/components/ClassDetailView";
 
 export const metadata = { title: "Detalii clasă — Catalog Școlar" };
@@ -36,11 +37,12 @@ export default async function ClassDetailPage({
   const academicYearId = p.an ?? classInfo.academicYearId ?? activeYear?.id ?? "";
   if (!academicYearId) redirect("/admin/clase");
 
-  const [subjects, students, unenrolledStudents, teacherRows] = await Promise.all([
+  const [subjects, students, unenrolledStudents, teacherRows, parents] = await Promise.all([
     getClassSubjectMatrix(id, academicYearId, schoolId),
     getStudents(schoolId, { classId: id, academicYearId }),
     getUnenrolledStudents(schoolId, academicYearId),
     getTeachers(schoolId),
+    getClassParents(id, academicYearId, schoolId),
   ]);
 
   const teachers = teacherRows.map((t) => ({
@@ -71,10 +73,12 @@ export default async function ClassDetailPage({
       className={classInfo.name}
       gradeLevel={classInfo.gradeLevel}
       academicYearId={academicYearId}
+      academicYearName={activeYear?.name ?? academicYearId}
       subjects={subjects}
       students={enrolledStudents}
       unenrolledStudents={unenrolledStudents}
       teachers={teachers}
+      parents={parents}
     />
   );
 }
