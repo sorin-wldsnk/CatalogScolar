@@ -36,8 +36,13 @@ export function LoginForm() {
     startTransition(async () => {
       const result = await loginAction(data.email, data.password);
       if (result.success) {
-        router.push("/dashboard");
-        router.refresh();
+        if (result.mustChangeOnLogin) {
+          router.push("/schimba-parola");
+        } else if (result.roles?.includes("PARENT")) {
+          router.push("/panou-parinte");
+        } else {
+          router.push("/panou-principal");
+        }
       } else {
         toast.error(result.error ?? "Autentificare eșuată.");
       }

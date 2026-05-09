@@ -17,7 +17,7 @@ export default async function StudentCatalogPage({
 
   const schoolId = (session as { schoolId?: string }).schoolId;
   const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!schoolId) redirect("/dashboard");
+  if (!schoolId) redirect("/panou-principal");
 
   const { classId, studentId } = await params;
 

@@ -11,13 +11,13 @@ export default async function SchoolSettingsPage() {
   if (!session?.user) redirect("/login");
 
   const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "class", "create"))) redirect("/dashboard");
+  if (!(await can(roles, "class", "create"))) redirect("/panou-principal");
 
   const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) redirect("/dashboard");
+  if (!schoolId) redirect("/panou-principal");
 
   const schoolData = await getSchool(schoolId);
-  if (!schoolData) redirect("/dashboard");
+  if (!schoolData) redirect("/panou-principal");
 
   return (
     <div className="space-y-6">

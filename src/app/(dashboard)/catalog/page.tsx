@@ -23,7 +23,7 @@ export default async function CatalogPage({
 
   const schoolId = (session as { schoolId?: string }).schoolId;
   const userId = session?.user?.id;
-  if (!schoolId || !userId) redirect("/dashboard");
+  if (!schoolId || !userId) redirect("/panou-principal");
 
   const roles = (session as { roles?: string[] }).roles ?? [];
   const isHomeroom = roles.includes("HOMEROOM");

@@ -11,10 +11,10 @@ export default async function MateriiPage() {
   if (!session?.user) redirect("/login");
 
   const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "subject", "read"))) redirect("/dashboard");
+  if (!(await can(roles, "subject", "read"))) redirect("/panou-principal");
 
   const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) redirect("/dashboard");
+  if (!schoolId) redirect("/panou-principal");
 
   const subjects = await getSubjects(schoolId);
 

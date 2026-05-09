@@ -36,7 +36,7 @@ import { usePermissions } from "@/lib/permissions";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", label: "Panou principal", icon: LayoutDashboard },
+  { href: "/panou-principal", label: "Panou principal", icon: LayoutDashboard },
   { href: "/catalog", label: "Catalog", icon: BookOpen },
   { href: "/absente", label: "Absențe", icon: CalendarX2 },
   { href: "/rapoarte", label: "Rapoarte", icon: BarChart3 },

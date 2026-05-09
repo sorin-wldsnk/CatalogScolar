@@ -13,7 +13,7 @@ export default auth(function proxy(req: NextRequest & { auth?: unknown }) {
 
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     if (session?.user) {
-      const dest = roles.includes("PARENT") ? "/panou-parinte" : "/dashboard";
+      const dest = roles.includes("PARENT") ? "/panou-parinte" : "/panou-principal";
       return NextResponse.redirect(new URL(dest, req.url));
     }
     return NextResponse.next();

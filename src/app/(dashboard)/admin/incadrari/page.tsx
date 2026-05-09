@@ -19,10 +19,10 @@ export default async function IncadrariPage({
   if (!session?.user) redirect("/login");
 
   const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "subject", "read"))) redirect("/dashboard");
+  if (!(await can(roles, "subject", "read"))) redirect("/panou-principal");
 
   const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) redirect("/dashboard");
+  if (!schoolId) redirect("/panou-principal");
 
   const params = await searchParams;
   const years = await getAcademicYears(schoolId);

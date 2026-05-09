@@ -15,10 +15,10 @@ export default async function TeacherDetailPage({
   if (!session?.user) redirect("/login");
 
   const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!(await can(roles, "class", "read"))) redirect("/dashboard");
+  if (!(await can(roles, "class", "read"))) redirect("/panou-principal");
 
   const schoolId = (session as { schoolId?: string }).schoolId;
-  if (!schoolId) redirect("/dashboard");
+  if (!schoolId) redirect("/panou-principal");
 
   const { id } = await params;
   const [teacher, assignments] = await Promise.all([

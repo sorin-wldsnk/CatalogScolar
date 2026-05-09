@@ -15,11 +15,11 @@ export default async function PanouParintePage({
   if (!session?.user) redirect("/login");
 
   const roles = (session as { roles?: string[] }).roles ?? [];
-  if (!roles.includes("PARENT")) redirect("/dashboard");
+  if (!roles.includes("PARENT")) redirect("/panou-principal");
 
   const schoolId = (session as { schoolId?: string }).schoolId;
   const userId = session?.user?.id;
-  if (!schoolId || !userId) redirect("/dashboard");
+  if (!schoolId || !userId) redirect("/panou-principal");
 
   const params = await searchParams;
   const semester = params.sem ? parseInt(params.sem) : 1;

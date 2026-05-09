@@ -1,6 +1,7 @@
 "use server";
 
 import { signIn } from "@/auth";
+import { auth } from "@/auth";
 import { AuthError } from "next-auth";
 
 export async function loginAction(email: string, password: string) {
@@ -10,7 +11,14 @@ export async function loginAction(email: string, password: string) {
       password,
       redirect: false,
     });
-    return { success: true };
+
+    // Read the freshly created session to get roles and mustChangeOnLogin
+    const session = await auth();
+    const roles = (session as { roles?: string[] })?.roles ?? [];
+    const mustChangeOnLogin =
+      (session as { mustChangeOnLogin?: boolean })?.mustChangeOnLogin ?? false;
+
+    return { success: true, roles, mustChangeOnLogin };
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {

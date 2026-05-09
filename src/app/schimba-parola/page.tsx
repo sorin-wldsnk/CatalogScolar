@@ -11,7 +11,7 @@ export default async function ChangePasswordPage() {
   const mustChange = (session as { mustChangeOnLogin?: boolean }).mustChangeOnLogin;
   if (!mustChange) {
     const roles = (session as { roles?: string[] }).roles ?? [];
-    redirect(roles.includes("PARENT") ? "/panou-parinte" : "/dashboard");
+    redirect(roles.includes("PARENT") ? "/panou-parinte" : "/panou-principal");
   }
 
   return (
