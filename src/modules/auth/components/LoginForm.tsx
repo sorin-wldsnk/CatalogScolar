@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,7 +21,6 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
 
   const {
     register,
@@ -37,11 +35,11 @@ export function LoginForm() {
       const result = await loginAction(data.email, data.password);
       if (result.success) {
         if (result.mustChangeOnLogin) {
-          router.push("/schimba-parola");
+          window.location.href = "/schimba-parola";
         } else if (result.roles?.includes("PARENT")) {
-          router.push("/panou-parinte");
+          window.location.href = "/panou-parinte";
         } else {
-          router.push("/panou-principal");
+          window.location.href = "/panou-principal";
         }
       } else {
         toast.error(result.error ?? "Autentificare eșuată.");
