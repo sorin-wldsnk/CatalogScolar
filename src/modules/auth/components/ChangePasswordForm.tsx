@@ -35,9 +35,9 @@ export function ChangePasswordForm() {
     startTransition(async () => {
       const result = await changePassword(data);
       if (result.success) {
-        toast.success("Parola a fost setată. Vă autentificați din nou...");
-        // Force re-login so JWT gets updated mustChangeOnLogin = false
-        await signOut({ callbackUrl: "/login" });
+        toast.success("Parola a fost schimbată. Autentificați-vă din nou.");
+        await signOut({ redirect: false });
+        window.location.href = "/login?parola-schimbata=true";
       } else {
         toast.error(result.error ?? "Eroare la setarea parolei");
       }

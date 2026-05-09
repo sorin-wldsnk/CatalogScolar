@@ -28,8 +28,12 @@ export default auth(function proxy(req: NextRequest & { auth?: unknown }) {
     return NextResponse.redirect(new URL(CHANGE_PASSWORD_PATH, req.url));
   }
 
-  // PARENT users can only access /panou-parinte and /api routes
-  if (roles.includes("PARENT") && !pathname.startsWith("/panou-parinte")) {
+  // PARENT users can only access /panou-parinte (and /schimba-parola when mustChange)
+  if (
+    roles.includes("PARENT") &&
+    !pathname.startsWith("/panou-parinte") &&
+    pathname !== CHANGE_PASSWORD_PATH
+  ) {
     return NextResponse.redirect(new URL("/panou-parinte", req.url));
   }
 

@@ -63,13 +63,23 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.userId = user.id as string;
         token.schoolId = (user as { schoolId?: string | null }).schoolId ?? null;
         token.roles = (user as { roles?: string[] }).roles ?? [];
         token.mustChangeOnLogin =
           (user as { mustChangeOnLogin?: boolean }).mustChangeOnLogin ?? false;
+      } else if (token.mustChangeOnLogin) {
+        // Re-read from DB only when token claims mustChange is still true.
+        // This catches the case where the user changed their password but the
+        // JWT cookie wasn't invalidated (e.g. unstable_update failed or was skipped).
+        const [fresh] = await db
+          .select({ mustChangeOnLogin: appUser.mustChangeOnLogin })
+          .from(appUser)
+          .where(eq(appUser.id, token.sub as string))
+          .limit(1);
+        token.mustChangeOnLogin = fresh?.mustChangeOnLogin ?? false;
       }
       return token;
     },
@@ -83,7 +93,7 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
   },
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
   pages: {
     signIn: "/login",
   },

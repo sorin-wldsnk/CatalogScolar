@@ -5,7 +5,14 @@ export const metadata = {
   title: "Autentificare — Catalog Școlar",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const passwordChanged = params["parola-schimbata"] === "true";
+
   return (
     <div className="w-full max-w-md">
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-10">
@@ -21,6 +28,12 @@ export default function LoginPage() {
             Autentificați-vă în contul dvs.
           </p>
         </div>
+
+        {passwordChanged && (
+          <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            Parola a fost schimbată cu succes. Autentificați-vă cu noua parolă.
+          </div>
+        )}
 
         <LoginForm />
 
