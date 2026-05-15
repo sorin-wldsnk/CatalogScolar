@@ -16,6 +16,7 @@ const subjectSchema = z.object({
     .min(1, "Codul este obligatoriu")
     .max(10, "Codul poate avea maxim 10 caractere")
     .toUpperCase(),
+  gradeLevels: z.array(z.number().int().min(0).max(8)).optional(),
 });
 
 export async function createSubject(data: unknown) {
@@ -41,11 +42,33 @@ export async function createSubject(data: unknown) {
       schoolId,
       name: normalizeDiacritics(parsed.data.name),
       code: parsed.data.code,
+      gradeLevels: parsed.data.gradeLevels ?? [],
     })
     .returning();
 
   revalidatePath("/admin/materii");
   return { success: true, data: s };
+}
+
+export async function updateSubjectGradeLevels(id: string, gradeLevels: number[]) {
+  const session = await auth();
+  if (!session?.user) return { success: false, error: "Neautentificat" };
+
+  const roles = (session as { roles?: string[] }).roles ?? [];
+  if (!(await can(roles, "subject", "create" as never))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const schoolId = (session as { schoolId?: string }).schoolId;
+  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
+
+  await db
+    .update(subject)
+    .set({ gradeLevels, updatedAt: new Date() })
+    .where(and(eq(subject.id, id), eq(subject.schoolId, schoolId)));
+
+  revalidatePath("/admin/materii");
+  return { success: true };
 }
 
 export async function updateSubject(id: string, data: unknown) {

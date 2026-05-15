@@ -1,12 +1,44 @@
 import { db } from "@/db";
-import { subject } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { subject, teachingAssignment, classGroup, appUser } from "@/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 export async function getSubjects(schoolId: string) {
   return db
     .select()
     .from(subject)
     .where(eq(subject.schoolId, schoolId))
+    .orderBy(subject.name);
+}
+
+export async function getSubjectsForClass(classId: string, academicYearId: string, schoolId: string) {
+  return db
+    .select({
+      subjectId: subject.id,
+      subjectName: subject.name,
+      subjectCode: subject.code,
+      gradeLevels: subject.gradeLevels,
+      assignmentId: teachingAssignment.id,
+      teacherUserId: teachingAssignment.teacherUserId,
+      teacherFirstName: appUser.firstName,
+      teacherLastName: appUser.lastName,
+    })
+    .from(subject)
+    .innerJoin(classGroup, eq(classGroup.id, classId))
+    .leftJoin(
+      teachingAssignment,
+      and(
+        eq(teachingAssignment.subjectId, subject.id),
+        eq(teachingAssignment.classId, classId),
+        eq(teachingAssignment.academicYearId, academicYearId)
+      )
+    )
+    .leftJoin(appUser, eq(appUser.id, teachingAssignment.teacherUserId))
+    .where(
+      and(
+        eq(subject.schoolId, schoolId),
+        sql`${classGroup.gradeLevel} = ANY(${subject.gradeLevels})`
+      )
+    )
     .orderBy(subject.name);
 }
 

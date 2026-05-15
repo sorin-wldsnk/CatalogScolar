@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { can } from "@/lib/casbin";
 import { getClassById, getClasses } from "@/modules/academic/queries/class.queries";
 import { getActiveAcademicYear } from "@/modules/academic/queries/academic-year.queries";
-import { getClassSubjectMatrix } from "@/modules/academic/queries/teaching-assignment.queries";
+import { getSubjectsForClass } from "@/modules/academic/queries/subject.queries";
 import { getStudents, getUnenrolledStudents } from "@/modules/academic/queries/student.queries";
 import { getTeachers } from "@/modules/users/queries/teacher.queries";
 import { getClassParents } from "@/modules/academic/queries/class-parents.queries";
@@ -38,7 +38,7 @@ export default async function ClassDetailPage({
   if (!academicYearId) redirect("/admin/clase");
 
   const [subjects, students, unenrolledStudents, teacherRows, parents, allClassRows] = await Promise.all([
-    getClassSubjectMatrix(id, academicYearId, schoolId),
+    getSubjectsForClass(id, academicYearId, schoolId),
     getStudents(schoolId, { classId: id, academicYearId }),
     getUnenrolledStudents(schoolId, academicYearId),
     getTeachers(schoolId),
