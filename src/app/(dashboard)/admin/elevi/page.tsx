@@ -11,7 +11,7 @@ export const metadata = { title: "Elevi — Catalog Școlar" };
 export default async function EleviPage({
   searchParams,
 }: {
-  searchParams: Promise<{ an?: string; clasa?: string }>;
+  searchParams: Promise<{ an?: string; clasa?: string; cauta?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -35,11 +35,11 @@ export default async function EleviPage({
       }))
     : [];
 
-  // Fetchuiesc elevii doar dacă e selectată o clasă
-  const students = selectedYearId && params.clasa
+  const studentRows = selectedYearId
     ? (await getStudents(schoolId, {
         academicYearId: selectedYearId,
-        classId: params.clasa,
+        classId: params.clasa || undefined,
+        search: params.cauta || undefined,
       })) as Array<{
         id: string;
         firstName: string;
@@ -48,10 +48,11 @@ export default async function EleviPage({
         dateOfBirth?: string | null;
         status: string;
         enrollmentId?: string;
+        className?: string;
       }>
     : [];
 
-  const mappedStudents = students.map((s) => ({
+  const mappedStudents = studentRows.map((s) => ({
     id: s.id,
     firstName: s.firstName,
     lastName: s.lastName,
@@ -59,6 +60,7 @@ export default async function EleviPage({
     dateOfBirth: s.dateOfBirth ?? null,
     status: s.status,
     enrollmentId: s.enrollmentId ?? "",
+    className: s.className,
   }));
 
   return (
@@ -69,6 +71,7 @@ export default async function EleviPage({
       students={mappedStudents}
       selectedClassId={params.clasa}
       roles={roles}
+      selectedSearch={params.cauta}
     />
   );
 }
