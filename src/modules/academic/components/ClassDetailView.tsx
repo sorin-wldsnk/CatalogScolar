@@ -301,17 +301,15 @@ export function ClassDetailView({
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {allClasses.length > 0 && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => { setTransferTarget(s); setSelectedTransferClassId(""); }}
-                            >
-                              <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
-                              Mută
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => { setTransferTarget(s); setSelectedTransferClassId(""); }}
+                          >
+                            <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                            Mută
+                          </Button>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -385,21 +383,31 @@ export function ClassDetailView({
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                <Select
-                  value={selectedTransferClassId}
-                  onValueChange={(v) => { if (v) setSelectedTransferClassId(v); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selectați clasa destinație" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allClasses.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {allClasses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">
+                    Nu există alte clase disponibile în acest an școlar.
+                  </p>
+                ) : (
+                  <Select
+                    value={selectedTransferClassId}
+                    onValueChange={(v) => { if (v) setSelectedTransferClassId(v); }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {selectedTransferClassId
+                          ? allClasses.find((c) => c.id === selectedTransferClassId)?.name ?? "Selectați clasa"
+                          : "Selectați clasa destinație"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allClasses.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setTransferTarget(null); setSelectedTransferClassId(""); }} disabled={transferring}>
@@ -541,7 +549,14 @@ export function ClassDetailView({
               onValueChange={(v) => { if (v) setSelectedHomeroomId(v); }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selectați profesorul" />
+                <SelectValue>
+                  {selectedHomeroomId
+                    ? (() => {
+                        const t = teachers.find((t) => t.id === selectedHomeroomId);
+                        return t ? `${t.lastName} ${t.firstName}` : "Selectați dirigintele";
+                      })()
+                    : "Selectați dirigintele"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {teachers.map((t) => (

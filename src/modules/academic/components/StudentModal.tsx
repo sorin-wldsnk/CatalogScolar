@@ -196,7 +196,14 @@ export function StudentModal({ open, onClose, classId, academicYearId, classes =
                           onValueChange={(v) => v && field.onChange(v)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selectați anul" />
+                            <SelectValue>
+                              {field.value
+                                ? (() => {
+                                    const y = years.find((y) => y.id === field.value);
+                                    return y ? `${y.name}${y.isActive ? " (Activ)" : ""}` : "Selectați anul";
+                                  })()
+                                : "Selectați anul"}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {years.map((y) => (
@@ -223,7 +230,11 @@ export function StudentModal({ open, onClose, classId, academicYearId, classes =
                           onValueChange={(v) => v && field.onChange(v)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selectați clasa" />
+                            <SelectValue>
+                              {field.value
+                                ? classes.find((c) => c.id === field.value)?.name ?? "Selectați clasa"
+                                : "Selectați clasa"}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {classes.map((c) => (
