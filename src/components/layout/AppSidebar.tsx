@@ -17,6 +17,7 @@ import {
   ClipboardList,
   CalendarDays,
   School,
+  Presentation,
 } from "lucide-react";
 import {
   Sidebar,
@@ -90,7 +91,7 @@ export function AppSidebar({ roles = [] }: { roles?: string[] }) {
   const pathname = usePathname();
   const isAdminSection = pathname.startsWith("/admin");
   const [adminOpen, setAdminOpen] = useState(isAdminSection);
-  const { canViewAdminPanel } = usePermissions(roles);
+  const { canViewAdminPanel, isHomeroom } = usePermissions(roles);
 
   return (
     <Sidebar>
@@ -122,6 +123,14 @@ export function AppSidebar({ roles = [] }: { roles?: string[] }) {
                   isActive={pathname === item.href}
                 />
               ))}
+              {isHomeroom && (
+                <NavLink
+                  href="/catalog/clasa-mea"
+                  label="Clasa mea"
+                  icon={Presentation}
+                  isActive={pathname === "/catalog/clasa-mea"}
+                />
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

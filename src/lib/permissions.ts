@@ -8,5 +8,6 @@ export function usePermissions(roles: string[]) {
     canViewAdminPanel: roles.some((r) => ["ADMIN", "SECRETARY"].includes(r)),
     canAddObservation: roles.some((r) => ["ADMIN", "TEACHER", "HOMEROOM"].includes(r)),
     canViewReports: roles.some((r) => ["ADMIN", "SECRETARY", "TEACHER", "HOMEROOM"].includes(r)),
+    isHomeroom: roles.includes("HOMEROOM"),
   };
 }

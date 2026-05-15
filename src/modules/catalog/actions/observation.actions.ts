@@ -65,3 +65,30 @@ export async function addObservation(data: unknown) {
 export async function getObservations(enrollmentId: string) {
   return getObservationsForEnrollment(enrollmentId);
 }
+
+export async function deleteObservation(observationId: string) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  const isTeacher = ctx.roles.some((r) => ["TEACHER", "HOMEROOM", "ADMIN"].includes(r));
+  if (!isTeacher) return { success: false, error: "Nu aveți permisiunea necesară" };
+
+  const [obs] = await db
+    .select({ id: observation.id, teacherUserId: observation.teacherUserId })
+    .from(observation)
+    .where(and(eq(observation.id, observationId), eq(observation.schoolId, ctx.schoolId)))
+    .limit(1);
+
+  if (!obs) return { success: false, error: "Observația nu a fost găsită" };
+
+  const isAdmin = ctx.roles.includes("ADMIN");
+  if (!isAdmin && obs.teacherUserId !== ctx.userId) {
+    return { success: false, error: "Puteți șterge doar propriile observații" };
+  }
+
+  await db.delete(observation).where(eq(observation.id, observationId));
+
+  revalidatePath("/catalog");
+  revalidatePath("/catalog/clasa-mea");
+  return { success: true };
+}

@@ -2,6 +2,35 @@ import { db } from "@/db";
 import { absence, enrollment, student, subject, appUser, classGroup, observation } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
+export type HomeroomClass = {
+  id: string;
+  name: string;
+  gradeLevel: number;
+  academicYearId: string;
+};
+
+export async function getHomeroomClass(
+  teacherUserId: string,
+  schoolId: string
+): Promise<HomeroomClass | null> {
+  const [row] = await db
+    .select({
+      id: classGroup.id,
+      name: classGroup.name,
+      gradeLevel: classGroup.gradeLevel,
+      academicYearId: classGroup.academicYearId,
+    })
+    .from(classGroup)
+    .where(
+      and(
+        eq(classGroup.homeroomTeacherId, teacherUserId),
+        eq(classGroup.schoolId, schoolId)
+      )
+    )
+    .limit(1);
+  return row ?? null;
+}
+
 export type PendingAbsenceRow = {
   id: string;
   studentName: string;
