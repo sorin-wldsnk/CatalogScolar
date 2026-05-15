@@ -56,16 +56,18 @@ export default async function ClassDetailPage({
     id: string;
     firstName: string;
     lastName: string;
+    personalId?: string | null;
+    dateOfBirth?: string | null;
     status: string;
     enrollmentId?: string;
-    enrollmentStatus?: string;
   }>).map((s) => ({
     id: s.id,
     firstName: s.firstName,
     lastName: s.lastName,
+    personalId: s.personalId ?? null,
+    dateOfBirth: s.dateOfBirth ?? null,
     status: s.status,
     enrollmentId: s.enrollmentId ?? "",
-    enrollmentStatus: s.enrollmentStatus ?? "",
   }));
 
   const homeroomTeacherName =
@@ -80,6 +82,7 @@ export default async function ClassDetailPage({
       gradeLevel={classInfo.gradeLevel}
       academicYearId={academicYearId}
       academicYearName={activeYear?.name ?? academicYearId}
+      schoolId={schoolId}
       homeroomTeacherId={classInfo.homeroomTeacherId ?? null}
       homeroomTeacherName={homeroomTeacherName}
       subjects={subjects}

@@ -11,7 +11,7 @@ export const metadata = { title: "Elevi — Catalog Școlar" };
 export default async function EleviPage({
   searchParams,
 }: {
-  searchParams: Promise<{ an?: string; clasa?: string; status?: string }>;
+  searchParams: Promise<{ an?: string; clasa?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -27,23 +27,47 @@ export default async function EleviPage({
   const activeYear = await getActiveAcademicYear(schoolId);
   const selectedYearId = params.an ?? activeYear?.id ?? years[0]?.id ?? "";
 
-  const classes = selectedYearId ? await getClasses(schoolId, selectedYearId) : [];
-  const students = selectedYearId
-    ? await getStudents(schoolId, {
+  const classes = selectedYearId
+    ? (await getClasses(schoolId, selectedYearId)).map((c) => ({
+        id: c.id,
+        name: c.name,
+        gradeLevel: c.gradeLevel,
+      }))
+    : [];
+
+  // Fetchuiesc elevii doar dacă e selectată o clasă
+  const students = selectedYearId && params.clasa
+    ? (await getStudents(schoolId, {
         academicYearId: selectedYearId,
         classId: params.clasa,
-        status: params.status,
-      })
+      })) as Array<{
+        id: string;
+        firstName: string;
+        lastName: string;
+        personalId?: string | null;
+        dateOfBirth?: string | null;
+        status: string;
+        enrollmentId?: string;
+      }>
     : [];
+
+  const mappedStudents = students.map((s) => ({
+    id: s.id,
+    firstName: s.firstName,
+    lastName: s.lastName,
+    personalId: s.personalId ?? null,
+    dateOfBirth: s.dateOfBirth ?? null,
+    status: s.status,
+    enrollmentId: s.enrollmentId ?? "",
+  }));
 
   return (
     <StudentsView
       years={years}
       selectedYearId={selectedYearId}
       classes={classes}
-      students={students}
+      students={mappedStudents}
       selectedClassId={params.clasa}
-      selectedStatus={params.status}
       roles={roles}
     />
   );
