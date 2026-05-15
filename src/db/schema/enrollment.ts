@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, date, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, date, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { school } from "./school";
 import { student } from "./student";
@@ -30,7 +30,9 @@ export const enrollment = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (t) => [
-    unique("enrollment_student_year_unique").on(t.studentId, t.academicYearId),
+    uniqueIndex("enrollment_student_year_active_unique")
+      .on(t.studentId, t.academicYearId)
+      .where(sql`${t.status} = 'ACTIVE'`),
     check(
       "enrollment_status_check",
       sql`${t.status} IN ('ACTIVE','WITHDRAWN','TRANSFERRED')`

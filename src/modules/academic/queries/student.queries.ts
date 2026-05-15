@@ -43,7 +43,8 @@ export async function getStudents(schoolId: string, filters: StudentFilters = {}
         and(
           eq(enrollment.studentId, student.id),
           eq(enrollment.classId, filters.classId),
-          eq(enrollment.academicYearId, filters.academicYearId)
+          eq(enrollment.academicYearId, filters.academicYearId),
+          eq(enrollment.status, "ACTIVE")
         )
       )
       .innerJoin(classGroup, eq(enrollment.classId, classGroup.id))

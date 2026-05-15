@@ -1,0 +1,2 @@
+ALTER TABLE "enrollment" DROP CONSTRAINT "enrollment_student_year_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "enrollment_student_year_active_unique" ON "enrollment" USING btree ("student_id","academic_year_id") WHERE "enrollment"."status" = 'ACTIVE';
