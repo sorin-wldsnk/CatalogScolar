@@ -32,12 +32,22 @@ export async function getClasses(schoolId: string, academicYearId: string) {
 }
 
 export async function getClassById(id: string, schoolId: string) {
-  const [cls] = await db
-    .select()
+  const [row] = await db
+    .select({
+      id: classGroup.id,
+      schoolId: classGroup.schoolId,
+      academicYearId: classGroup.academicYearId,
+      name: classGroup.name,
+      gradeLevel: classGroup.gradeLevel,
+      homeroomTeacherId: classGroup.homeroomTeacherId,
+      homeroomTeacherFirstName: appUser.firstName,
+      homeroomTeacherLastName: appUser.lastName,
+    })
     .from(classGroup)
+    .leftJoin(appUser, eq(classGroup.homeroomTeacherId, appUser.id))
     .where(and(eq(classGroup.id, id), eq(classGroup.schoolId, schoolId)))
     .limit(1);
-  return cls ?? null;
+  return row ?? null;
 }
 
 export async function getClassesForTeacher(teacherUserId: string, academicYearId: string) {

@@ -239,3 +239,76 @@ export async function unenrollStudent(enrollmentId: string, classId: string) {
   revalidatePath(`/admin/clase/${classId}`);
   return { success: true };
 }
+
+export async function transferStudent(
+  enrollmentId: string,
+  newClassId: string,
+  currentClassId: string,
+  academicYearId: string
+) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "enrollment", "create" as never))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const [existing] = await db
+    .select()
+    .from(enrollment)
+    .where(and(eq(enrollment.id, enrollmentId), eq(enrollment.schoolId, ctx.schoolId)))
+    .limit(1);
+
+  if (!existing) return { success: false, error: "Înscrierea nu a fost găsită" };
+
+  const today = new Date().toISOString().split("T")[0];
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(enrollment)
+      .set({ status: "TRANSFERRED", updatedAt: new Date() })
+      .where(eq(enrollment.id, enrollmentId));
+
+    await tx
+      .insert(enrollment)
+      .values({
+        schoolId: ctx.schoolId,
+        studentId: existing.studentId,
+        classId: newClassId,
+        academicYearId,
+        enrolledAt: today,
+        status: "ACTIVE",
+      })
+      .onConflictDoNothing();
+  });
+
+  revalidatePath("/admin/elevi");
+  revalidatePath(`/admin/clase/${currentClassId}`);
+  revalidatePath(`/admin/clase/${newClassId}`);
+  return { success: true };
+}
+
+export async function withdrawStudent(enrollmentId: string, studentId: string, classId: string) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "enrollment", "create" as never))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(enrollment)
+      .set({ status: "WITHDRAWN", updatedAt: new Date() })
+      .where(and(eq(enrollment.id, enrollmentId), eq(enrollment.schoolId, ctx.schoolId)));
+
+    await tx
+      .update(student)
+      .set({ status: "WITHDRAWN", updatedAt: new Date() })
+      .where(and(eq(student.id, studentId), eq(student.schoolId, ctx.schoolId)));
+  });
+
+  revalidatePath("/admin/elevi");
+  revalidatePath(`/admin/clase/${classId}`);
+  return { success: true };
+}

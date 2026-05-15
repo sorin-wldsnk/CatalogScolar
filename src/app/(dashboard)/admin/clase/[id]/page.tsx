@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { can } from "@/lib/casbin";
-import { getClassById } from "@/modules/academic/queries/class.queries";
+import { getClassById, getClasses } from "@/modules/academic/queries/class.queries";
 import { getActiveAcademicYear } from "@/modules/academic/queries/academic-year.queries";
 import { getClassSubjectMatrix } from "@/modules/academic/queries/teaching-assignment.queries";
 import { getStudents, getUnenrolledStudents } from "@/modules/academic/queries/student.queries";
@@ -37,12 +37,13 @@ export default async function ClassDetailPage({
   const academicYearId = p.an ?? classInfo.academicYearId ?? activeYear?.id ?? "";
   if (!academicYearId) redirect("/admin/clase");
 
-  const [subjects, students, unenrolledStudents, teacherRows, parents] = await Promise.all([
+  const [subjects, students, unenrolledStudents, teacherRows, parents, allClassRows] = await Promise.all([
     getClassSubjectMatrix(id, academicYearId, schoolId),
     getStudents(schoolId, { classId: id, academicYearId }),
     getUnenrolledStudents(schoolId, academicYearId),
     getTeachers(schoolId),
     getClassParents(id, academicYearId, schoolId),
+    getClasses(schoolId, academicYearId),
   ]);
 
   const teachers = teacherRows.map((t) => ({
@@ -67,6 +68,11 @@ export default async function ClassDetailPage({
     enrollmentStatus: s.enrollmentStatus ?? "",
   }));
 
+  const homeroomTeacherName =
+    classInfo.homeroomTeacherFirstName && classInfo.homeroomTeacherLastName
+      ? `${classInfo.homeroomTeacherFirstName} ${classInfo.homeroomTeacherLastName}`
+      : null;
+
   return (
     <ClassDetailView
       classId={id}
@@ -74,11 +80,14 @@ export default async function ClassDetailPage({
       gradeLevel={classInfo.gradeLevel}
       academicYearId={academicYearId}
       academicYearName={activeYear?.name ?? academicYearId}
+      homeroomTeacherId={classInfo.homeroomTeacherId ?? null}
+      homeroomTeacherName={homeroomTeacherName}
       subjects={subjects}
       students={enrolledStudents}
       unenrolledStudents={unenrolledStudents}
       teachers={teachers}
       parents={parents}
+      allClasses={allClassRows.filter((c) => c.id !== id).map((c) => ({ id: c.id, name: c.name }))}
     />
   );
 }

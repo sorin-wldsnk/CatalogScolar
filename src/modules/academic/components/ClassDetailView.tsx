@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, UserX } from "lucide-react";
+import { Plus, Trash2, Loader2, UserX, ArrowRightLeft, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,10 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { AssignTeacherModal } from "./AssignTeacherModal";
 import { ClassParentsTab } from "./ClassParentsTab";
-import { enrollStudent, unenrollStudent } from "@/modules/academic/actions/student.actions";
+import {
+  enrollStudent,
+  transferStudent,
+  withdrawStudent,
+} from "@/modules/academic/actions/student.actions";
+import { assignHomeroomTeacher } from "@/modules/academic/actions/class.actions";
 import { removeClassSubjectTeacher } from "@/modules/academic/actions/teaching-assignment.actions";
 import type { ClassParentRow } from "@/modules/academic/queries/class-parents.queries";
 
@@ -59,17 +65,22 @@ interface UnenrolledStudent {
 
 interface Teacher { id: string; firstName: string; lastName: string; }
 
+interface AvailableClass { id: string; name: string; }
+
 interface Props {
   classId: string;
   className: string;
   gradeLevel: number;
   academicYearId: string;
   academicYearName: string;
+  homeroomTeacherId: string | null;
+  homeroomTeacherName: string | null;
   subjects: SubjectRow[];
   students: StudentRow[];
   unenrolledStudents: UnenrolledStudent[];
   teachers: Teacher[];
   parents: ClassParentRow[];
+  allClasses: AvailableClass[];
 }
 
 export function ClassDetailView({
@@ -78,19 +89,40 @@ export function ClassDetailView({
   gradeLevel,
   academicYearId,
   academicYearName,
+  homeroomTeacherId,
+  homeroomTeacherName,
   subjects,
-  students,
+  students: initialStudents,
   unenrolledStudents,
   teachers,
   parents,
+  allClasses,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"elevi" | "incadrari" | "parinti">("elevi");
   const [assignModal, setAssignModal] = useState<SubjectRow | null>(null);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [isPending, startTransition] = useTransition();
-  const [removingId, setRemovingId] = useState<string | null>(null);
   const [removingAssignmentId, setRemovingAssignmentId] = useState<string | null>(null);
+
+  // State local elevi (pentru actualizare optimistă)
+  const [students, setStudents] = useState<StudentRow[]>(initialStudents);
+
+  // Diriginte
+  const [currentHomeroomId, setCurrentHomeroomId] = useState<string | null>(homeroomTeacherId);
+  const [currentHomeroomName, setCurrentHomeroomName] = useState<string | null>(homeroomTeacherName);
+  const [homeroomModalOpen, setHomeroomModalOpen] = useState(false);
+  const [selectedHomeroomId, setSelectedHomeroomId] = useState<string>(homeroomTeacherId ?? "");
+  const [savingHomeroom, startHomeroomTransition] = useTransition();
+
+  // Transfer elev
+  const [transferTarget, setTransferTarget] = useState<StudentRow | null>(null);
+  const [selectedTransferClassId, setSelectedTransferClassId] = useState<string>("");
+  const [transferring, startTransferTransition] = useTransition();
+
+  // Retragere elev
+  const [withdrawTarget, setWithdrawTarget] = useState<StudentRow | null>(null);
+  const [withdrawing, startWithdrawTransition] = useTransition();
 
   function handleEnrollStudent() {
     if (!selectedStudentId) return;
@@ -106,16 +138,53 @@ export function ClassDetailView({
     });
   }
 
-  function handleUnenroll(enrollmentId: string) {
-    setRemovingId(enrollmentId);
-    startTransition(async () => {
-      const result = await unenrollStudent(enrollmentId, classId);
+  function handleSaveHomeroom() {
+    startHomeroomTransition(async () => {
+      const teacherId = selectedHomeroomId || null;
+      const result = await assignHomeroomTeacher(classId, teacherId);
       if (result.success) {
-        toast.success("Elevul a fost eliminat din clasă");
+        const teacher = teacherId ? teachers.find((t) => t.id === teacherId) : null;
+        setCurrentHomeroomId(teacherId);
+        setCurrentHomeroomName(teacher ? `${teacher.firstName} ${teacher.lastName}` : null);
+        toast.success("Dirigintele a fost salvat");
+        setHomeroomModalOpen(false);
       } else {
         toast.error(result.error ?? "Eroare");
       }
-      setRemovingId(null);
+    });
+  }
+
+  function handleTransfer() {
+    if (!transferTarget || !selectedTransferClassId) return;
+    startTransferTransition(async () => {
+      const result = await transferStudent(
+        transferTarget.enrollmentId,
+        selectedTransferClassId,
+        classId,
+        academicYearId
+      );
+      if (result.success) {
+        setStudents((prev) => prev.filter((s) => s.enrollmentId !== transferTarget.enrollmentId));
+        toast.success("Elevul a fost mutat în altă clasă");
+        setTransferTarget(null);
+        setSelectedTransferClassId("");
+      } else {
+        toast.error(result.error ?? "Eroare");
+      }
+    });
+  }
+
+  function handleWithdraw() {
+    if (!withdrawTarget) return;
+    startWithdrawTransition(async () => {
+      const result = await withdrawStudent(withdrawTarget.enrollmentId, withdrawTarget.id, classId);
+      if (result.success) {
+        setStudents((prev) => prev.filter((s) => s.enrollmentId !== withdrawTarget.enrollmentId));
+        toast.success("Elevul a fost retras din școală");
+        setWithdrawTarget(null);
+      } else {
+        toast.error(result.error ?? "Eroare");
+      }
     });
   }
 
@@ -137,9 +206,31 @@ export function ClassDetailView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-[#1e3a5f]">{className}</h1>
-        <p className="text-muted-foreground mt-1">{gradeLevelLabel}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1e3a5f]">{className}</h1>
+          <p className="text-muted-foreground mt-1">{gradeLevelLabel}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Diriginte</p>
+            <p className="text-sm font-medium">
+              {currentHomeroomName ?? <span className="italic text-muted-foreground">Nealocat</span>}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={() => {
+              setSelectedHomeroomId(currentHomeroomId ?? "");
+              setHomeroomModalOpen(true);
+            }}
+          >
+            <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+            {currentHomeroomName ? "Schimbă" : "Alocă"}
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -194,7 +285,7 @@ export function ClassDetailView({
                   <TableRow className="bg-gray-50">
                     <TableHead>Nume</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-10" />
+                    <TableHead className="text-right">Acțiuni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -208,20 +299,29 @@ export function ClassDetailView({
                           {s.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-red-50"
-                          disabled={isPending && removingId === s.enrollmentId}
-                          onClick={() => handleUnenroll(s.enrollmentId)}
-                        >
-                          {isPending && removingId === s.enrollmentId ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <UserX className="h-3.5 w-3.5" />
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {allClasses.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              onClick={() => { setTransferTarget(s); setSelectedTransferClassId(""); }}
+                            >
+                              <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                              Mută
+                            </Button>
                           )}
-                        </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive hover:bg-red-50"
+                            onClick={() => setWithdrawTarget(s)}
+                          >
+                            <UserX className="h-3.5 w-3.5 mr-1" />
+                            Retras
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -230,7 +330,7 @@ export function ClassDetailView({
             </div>
           )}
 
-          {/* Add student dialog */}
+          {/* Dialog: Adaugă elev */}
           <Dialog open={addStudentOpen} onOpenChange={(o) => { if (!o) { setAddStudentOpen(false); setSelectedStudentId(""); } }}>
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
@@ -270,6 +370,77 @@ export function ClassDetailView({
                   className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
                 >
                   {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adaugă"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog: Mută în altă clasă */}
+          <Dialog open={!!transferTarget} onOpenChange={(o) => { if (!o) { setTransferTarget(null); setSelectedTransferClassId(""); } }}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Mută elev în altă clasă</DialogTitle>
+                <DialogDescription>
+                  {transferTarget && `${transferTarget.lastName} ${transferTarget.firstName} va fi transferat. Notele și absențele rămân în clasa curentă.`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Select
+                  value={selectedTransferClassId}
+                  onValueChange={(v) => { if (v) setSelectedTransferClassId(v); }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selectați clasa destinație" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allClasses.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setTransferTarget(null); setSelectedTransferClassId(""); }} disabled={transferring}>
+                  Anulează
+                </Button>
+                <Button
+                  onClick={handleTransfer}
+                  disabled={!selectedTransferClassId || transferring}
+                  className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
+                >
+                  {transferring ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mută"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog: Retragere elev */}
+          <Dialog open={!!withdrawTarget} onOpenChange={(o) => { if (!o) setWithdrawTarget(null); }}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Retragere din școală</DialogTitle>
+                <DialogDescription>
+                  {withdrawTarget && (
+                    <>
+                      Ești sigur că vrei să retragi elevul{" "}
+                      <strong>{withdrawTarget.lastName} {withdrawTarget.firstName}</strong>{" "}
+                      din școală? Această acțiune nu poate fi anulată.
+                    </>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setWithdrawTarget(null)} disabled={withdrawing}>
+                  Anulează
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleWithdraw}
+                  disabled={withdrawing}
+                >
+                  {withdrawing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Retrag elevul"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -353,7 +524,50 @@ export function ClassDetailView({
         />
       )}
 
-      {/* Assign teacher modal */}
+      {/* Modal: Alocare diriginte */}
+      <Dialog open={homeroomModalOpen} onOpenChange={(o) => { if (!o) setHomeroomModalOpen(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {currentHomeroomName ? "Schimbă dirigintele" : "Alocă diriginte"}
+            </DialogTitle>
+            <DialogDescription>
+              Selectați profesorul care va fi dirigintele clasei {className}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select
+              value={selectedHomeroomId ?? ""}
+              onValueChange={(v) => { if (v) setSelectedHomeroomId(v); }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selectați profesorul" />
+              </SelectTrigger>
+              <SelectContent>
+                {teachers.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.lastName} {t.firstName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHomeroomModalOpen(false)} disabled={savingHomeroom}>
+              Anulează
+            </Button>
+            <Button
+              onClick={handleSaveHomeroom}
+              disabled={savingHomeroom}
+              className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
+            >
+              {savingHomeroom ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvează"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Alocare profesor materie */}
       {assignModal && (
         <AssignTeacherModal
           open={!!assignModal}
