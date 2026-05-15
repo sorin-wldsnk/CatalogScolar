@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { teachingAssignment } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { teachingAssignment, subject, classGroup } from "@/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { can } from "@/lib/casbin";
 import { z } from "zod";
@@ -106,6 +106,61 @@ export async function createAssignment(data: unknown) {
 
   revalidatePath("/admin/incadrari");
   return { success: true, data: a };
+}
+
+export async function setMainTeacher(classId: string, teacherUserId: string, academicYearId: string) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "subject", "create" as never))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const [cls] = await db
+    .select({ gradeLevel: classGroup.gradeLevel })
+    .from(classGroup)
+    .where(and(eq(classGroup.id, classId), eq(classGroup.schoolId, ctx.schoolId)))
+    .limit(1);
+
+  if (!cls) return { success: false, error: "Clasa nu a fost găsită" };
+  if (cls.gradeLevel > 4) return { success: false, error: "Această funcție este disponibilă doar pentru clasele primare (0–4)" };
+
+  const subjects = await db
+    .select({ id: subject.id })
+    .from(subject)
+    .where(
+      and(
+        eq(subject.schoolId, ctx.schoolId),
+        sql`${cls.gradeLevel} = ANY(${subject.gradeLevels})`
+      )
+    );
+
+  if (subjects.length === 0) return { success: false, error: "Nu există materii configurate pentru acest nivel" };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(teachingAssignment)
+      .where(
+        and(
+          eq(teachingAssignment.classId, classId),
+          eq(teachingAssignment.academicYearId, academicYearId),
+          eq(teachingAssignment.schoolId, ctx.schoolId)
+        )
+      );
+
+    await tx.insert(teachingAssignment).values(
+      subjects.map((s) => ({
+        schoolId: ctx.schoolId,
+        academicYearId,
+        classId,
+        subjectId: s.id,
+        teacherUserId,
+      }))
+    );
+  });
+
+  revalidatePath(`/admin/clase/${classId}`);
+  return { success: true };
 }
 
 export async function deleteAssignment(id: string) {

@@ -14,3 +14,4 @@ export * from "./student_guardian";
 export * from "./grade";
 export * from "./absence";
 export * from "./observation";
+export * from "./teacher_subject";

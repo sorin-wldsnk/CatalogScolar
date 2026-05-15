@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { updateTeacher } from "@/modules/users/actions/teacher.actions";
+import { updateTeacher, toggleTeacherSubject } from "@/modules/users/actions/teacher.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, Pencil } from "lucide-react";
 import type { TeacherRow } from "@/modules/users/queries/teacher.queries";
+import type { Subject } from "@/db/schema";
 
 const ROLE_LABEL: Record<string, string> = {
   TEACHER: "Profesor",
@@ -33,6 +34,9 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+const PRIMARY_LEVELS = [0, 1, 2, 3, 4];
+const SECONDARY_LEVELS = [5, 6, 7, 8];
+
 interface AssignmentRow {
   id: string;
   academicYearName: string;
@@ -44,12 +48,20 @@ interface AssignmentRow {
 interface Props {
   teacher: TeacherRow;
   assignments: AssignmentRow[];
+  allSubjects: Subject[];
+  teacherSubjectIds: string[];
 }
 
-export function TeacherDetailView({ teacher, assignments }: Props) {
-  const [activeTab, setActiveTab] = useState<"date" | "incadrari">("date");
+function subjectsForLevels(subjects: Subject[], levels: number[]) {
+  return subjects.filter((s) => (s.gradeLevels ?? []).some((l) => levels.includes(l)));
+}
+
+export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSubjectIds }: Props) {
+  const [activeTab, setActiveTab] = useState<"date" | "materii" | "incadrari">("date");
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set(teacherSubjectIds));
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -72,6 +84,31 @@ export function TeacherDetailView({ teacher, assignments }: Props) {
     });
   }
 
+  function handleToggleSubject(subjectId: string) {
+    const add = !checkedIds.has(subjectId);
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (add) next.add(subjectId); else next.delete(subjectId);
+      return next;
+    });
+    setTogglingId(subjectId);
+    startTransition(async () => {
+      const result = await toggleTeacherSubject(teacher.id, subjectId, add);
+      if (!result.success) {
+        toast.error(result.error ?? "Eroare la salvare");
+        setCheckedIds((prev) => {
+          const next = new Set(prev);
+          if (add) next.delete(subjectId); else next.add(subjectId);
+          return next;
+        });
+      }
+      setTogglingId(null);
+    });
+  }
+
+  const primarySubjects = subjectsForLevels(allSubjects, PRIMARY_LEVELS);
+  const secondarySubjects = subjectsForLevels(allSubjects, SECONDARY_LEVELS);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -91,7 +128,7 @@ export function TeacherDetailView({ teacher, assignments }: Props) {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex gap-0">
-          {(["date", "incadrari"] as const).map((tab) => (
+          {(["date", "materii", "incadrari"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -102,7 +139,9 @@ export function TeacherDetailView({ teacher, assignments }: Props) {
                   : "border-transparent text-muted-foreground hover:text-gray-700",
               ].join(" ")}
             >
-              {tab === "date" ? "Date personale" : "Încadrări"}
+              {tab === "date" ? "Date personale"
+                : tab === "materii" ? `Materii (${checkedIds.size})`
+                : "Încadrări"}
             </button>
           ))}
         </div>
@@ -187,6 +226,87 @@ export function TeacherDetailView({ teacher, assignments }: Props) {
                 </Button>
               </div>
             </form>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Materii */}
+      {activeTab === "materii" && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Bifați materiile pe care le predă acest profesor. Acestea vor fi disponibile la alocare în încadrări.
+          </p>
+
+          {primarySubjects.length > 0 && (
+            <div className="rounded-xl border bg-white p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Primar (P–IV)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {primarySubjects.map((s) => {
+                  const checked = checkedIds.has(s.id);
+                  const toggling = togglingId === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      disabled={toggling}
+                      onClick={() => handleToggleSubject(s.id)}
+                      className={[
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-medium border transition-colors",
+                        checked
+                          ? "bg-[#1e5fa8] border-[#1e5fa8] text-white"
+                          : "bg-gray-50 border-gray-200 text-gray-600 hover:border-[#1e5fa8]/50",
+                        toggling ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                      ].join(" ")}
+                    >
+                      {toggling && <Loader2 className="h-3 w-3 animate-spin" />}
+                      <span className="text-xs font-mono">{s.code}</span>
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {secondarySubjects.length > 0 && (
+            <div className="rounded-xl border bg-white p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Gimnaziu (V–VIII)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {secondarySubjects.map((s) => {
+                  const checked = checkedIds.has(s.id);
+                  const toggling = togglingId === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      disabled={toggling}
+                      onClick={() => handleToggleSubject(s.id)}
+                      className={[
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-medium border transition-colors",
+                        checked
+                          ? "bg-[#1e5fa8] border-[#1e5fa8] text-white"
+                          : "bg-gray-50 border-gray-200 text-gray-600 hover:border-[#1e5fa8]/50",
+                        toggling ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                      ].join(" ")}
+                    >
+                      {toggling && <Loader2 className="h-3 w-3 animate-spin" />}
+                      <span className="text-xs font-mono">{s.code}</span>
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {allSubjects.length === 0 && (
+            <div className="rounded-xl border bg-white p-12 text-center text-muted-foreground">
+              Nicio materie configurată în școală.
+            </div>
           )}
         </div>
       )}

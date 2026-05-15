@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Loader2, UserCheck, Trash2 } from "lucide-react";
+import { Loader2, UserCheck, Trash2, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -32,7 +32,7 @@ import { ClassParentsTab } from "./ClassParentsTab";
 import { EleviClasa } from "./EleviClasa";
 import type { EleviClassaStudentRow } from "./EleviClasa";
 import { assignHomeroomTeacher } from "@/modules/academic/actions/class.actions";
-import { removeClassSubjectTeacher } from "@/modules/academic/actions/teaching-assignment.actions";
+import { removeClassSubjectTeacher, setMainTeacher } from "@/modules/academic/actions/teaching-assignment.actions";
 import type { ClassParentRow } from "@/modules/academic/queries/class-parents.queries";
 
 interface SubjectRow {
@@ -64,6 +64,7 @@ interface Props {
   teachers: Teacher[];
   parents: ClassParentRow[];
   allClasses: AvailableClass[];
+  teachersBySubject: Record<string, string[]>;
 }
 
 export function ClassDetailView({
@@ -80,6 +81,7 @@ export function ClassDetailView({
   teachers,
   parents,
   allClasses,
+  teachersBySubject,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"elevi" | "incadrari" | "parinti">("elevi");
   const [assignModal, setAssignModal] = useState<SubjectRow | null>(null);
@@ -93,6 +95,12 @@ export function ClassDetailView({
   const [selectedHomeroomId, setSelectedHomeroomId] = useState<string>(homeroomTeacherId ?? "");
   const [savingHomeroom, startHomeroomTransition] = useTransition();
 
+  // Învățător principal (primary classes only)
+  const isPrimary = gradeLevel <= 4;
+  const [mainTeacherModalOpen, setMainTeacherModalOpen] = useState(false);
+  const [selectedMainTeacherId, setSelectedMainTeacherId] = useState<string>("");
+  const [settingMainTeacher, startMainTeacherTransition] = useTransition();
+
   function handleSaveHomeroom() {
     startHomeroomTransition(async () => {
       const teacherId = selectedHomeroomId || null;
@@ -103,6 +111,20 @@ export function ClassDetailView({
         setCurrentHomeroomName(teacher ? `${teacher.firstName} ${teacher.lastName}` : null);
         toast.success("Dirigintele a fost salvat");
         setHomeroomModalOpen(false);
+      } else {
+        toast.error(result.error ?? "Eroare");
+      }
+    });
+  }
+
+  function handleSetMainTeacher() {
+    if (!selectedMainTeacherId) return;
+    startMainTeacherTransition(async () => {
+      const result = await setMainTeacher(classId, selectedMainTeacherId, academicYearId);
+      if (result.success) {
+        toast.success("Învățătorul principal a fost setat. Puteți modifica excepțiile individual.");
+        setMainTeacherModalOpen(false);
+        setSelectedMainTeacherId("");
       } else {
         toast.error(result.error ?? "Eroare");
       }
@@ -122,7 +144,14 @@ export function ClassDetailView({
     });
   }
 
+  function getTeachersForSubject(subjectId: string): Teacher[] {
+    const ids = teachersBySubject[subjectId] ?? [];
+    if (ids.length === 0) return [];
+    return teachers.filter((t) => ids.includes(t.id));
+  }
+
   const gradeLevelLabel = gradeLevel === 0 ? "Pregătitoare" : `Clasa ${gradeLevel}`;
+  const selectedMainTeacher = teachers.find((t) => t.id === selectedMainTeacherId);
 
   return (
     <div className="space-y-6">
@@ -196,64 +225,92 @@ export function ClassDetailView({
 
       {/* Tab: Încadrări */}
       {activeTab === "incadrari" && (
-        <div className="rounded-xl border bg-white overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead>Materie</TableHead>
-                <TableHead>Profesor</TableHead>
-                <TableHead className="text-right">Acțiuni</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {subjects.map((s) => (
-                <TableRow key={s.subjectId}>
-                  <TableCell>
-                    <span className="inline-flex items-center gap-2">
-                      <span className="text-xs font-mono font-semibold bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                        {s.subjectCode}
+        <div className="space-y-4">
+          {/* Primary class banner */}
+          {isPrimary && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <GraduationCap className="h-5 w-5 text-[#1e5fa8] mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-[#1e3a5f]">
+                      Clasă primară — Setează învățătorul principal
+                    </p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      Alocă un profesor la toate materiile clasei dintr-o singură acțiune. Excepțiile pot fi modificate manual după.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white shrink-0"
+                  onClick={() => setMainTeacherModalOpen(true)}
+                >
+                  Setează
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Materie</TableHead>
+                  <TableHead>Profesor</TableHead>
+                  <TableHead className="text-right">Acțiuni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {subjects.map((s) => (
+                  <TableRow key={s.subjectId}>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-2">
+                        <span className="text-xs font-mono font-semibold bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                          {s.subjectCode}
+                        </span>
+                        {s.subjectName}
                       </span>
-                      {s.subjectName}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {s.teacherLastName ? (
-                      <span className="font-medium">{s.teacherLastName} {s.teacherFirstName}</span>
-                    ) : (
-                      <span className="text-muted-foreground italic text-sm">Nealocat</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => setAssignModal(s)}
-                      >
-                        {s.assignmentId ? "Schimbă" : "Alocă profesor"}
-                      </Button>
-                      {s.assignmentId && (
+                    </TableCell>
+                    <TableCell>
+                      {s.teacherLastName ? (
+                        <span className="font-medium">{s.teacherLastName} {s.teacherFirstName}</span>
+                      ) : (
+                        <span className="text-muted-foreground italic text-sm">Nealocat</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-red-50"
-                          disabled={isPending && removingAssignmentId === s.assignmentId}
-                          onClick={() => handleRemoveAssignment(s.assignmentId!)}
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => setAssignModal(s)}
                         >
-                          {isPending && removingAssignmentId === s.assignmentId ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
+                          {s.assignmentId ? "Schimbă" : "Alocă profesor"}
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                        {s.assignmentId && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-red-50"
+                            disabled={isPending && removingAssignmentId === s.assignmentId}
+                            onClick={() => handleRemoveAssignment(s.assignmentId!)}
+                          >
+                            {isPending && removingAssignmentId === s.assignmentId ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 
@@ -318,6 +375,66 @@ export function ClassDetailView({
         </DialogContent>
       </Dialog>
 
+      {/* Modal: Setare învățător principal */}
+      <Dialog open={mainTeacherModalOpen} onOpenChange={(o) => { if (!o) { setMainTeacherModalOpen(false); setSelectedMainTeacherId(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Setează învățătorul principal</DialogTitle>
+            <DialogDescription>
+              Selectați profesorul care va fi alocat la toate materiile clasei {className}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select
+              value={selectedMainTeacherId}
+              onValueChange={(v) => { if (v) setSelectedMainTeacherId(v); }}
+            >
+              <SelectTrigger>
+                <SelectValue>
+                  {selectedMainTeacherId
+                    ? (() => {
+                        const t = teachers.find((t) => t.id === selectedMainTeacherId);
+                        return t ? `${t.lastName} ${t.firstName}` : "Selectați profesorul";
+                      })()
+                    : "Selectați profesorul"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {teachers.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.lastName} {t.firstName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedMainTeacher && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 leading-relaxed">
+                Această acțiune va aloca{" "}
+                <strong>{selectedMainTeacher.lastName} {selectedMainTeacher.firstName}</strong>{" "}
+                la toate materiile clasei <strong>{className}</strong>. Excepțiile (sport, engleză, religie) pot fi modificate manual după.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setMainTeacherModalOpen(false); setSelectedMainTeacherId(""); }}
+              disabled={settingMainTeacher}
+            >
+              Anulează
+            </Button>
+            <Button
+              onClick={handleSetMainTeacher}
+              disabled={settingMainTeacher || !selectedMainTeacherId}
+              className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
+            >
+              {settingMainTeacher ? <Loader2 className="h-4 w-4 animate-spin" /> : "Setează"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal: Alocare profesor materie */}
       {assignModal && (
         <AssignTeacherModal
@@ -327,7 +444,7 @@ export function ClassDetailView({
           subjectId={assignModal.subjectId}
           subjectName={assignModal.subjectName}
           academicYearId={academicYearId}
-          teachers={teachers}
+          teachers={getTeachersForSubject(assignModal.subjectId)}
           currentTeacherId={assignModal.teacherUserId}
         />
       )}

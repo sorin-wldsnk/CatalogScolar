@@ -8,6 +8,9 @@ import { getStudents, getUnenrolledStudents } from "@/modules/academic/queries/s
 import { getTeachers } from "@/modules/users/queries/teacher.queries";
 import { getClassParents } from "@/modules/academic/queries/class-parents.queries";
 import { ClassDetailView } from "@/modules/academic/components/ClassDetailView";
+import { db } from "@/db";
+import { teacherSubject } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export const metadata = { title: "Detalii clasă — Catalog Școlar" };
 
@@ -37,13 +40,16 @@ export default async function ClassDetailPage({
   const academicYearId = p.an ?? classInfo.academicYearId ?? activeYear?.id ?? "";
   if (!academicYearId) redirect("/admin/clase");
 
-  const [subjects, students, unenrolledStudents, teacherRows, parents, allClassRows] = await Promise.all([
+  const [subjects, students, unenrolledStudents, teacherRows, parents, allClassRows, teacherSubjectRows] = await Promise.all([
     getSubjectsForClass(id, academicYearId, schoolId),
     getStudents(schoolId, { classId: id, academicYearId }),
     getUnenrolledStudents(schoolId, academicYearId),
     getTeachers(schoolId),
     getClassParents(id, academicYearId, schoolId),
     getClasses(schoolId, academicYearId),
+    db.select({ teacherUserId: teacherSubject.teacherUserId, subjectId: teacherSubject.subjectId })
+      .from(teacherSubject)
+      .where(eq(teacherSubject.schoolId, schoolId)),
   ]);
 
   const teachers = teacherRows.map((t) => ({
@@ -51,6 +57,13 @@ export default async function ClassDetailPage({
     firstName: t.firstName,
     lastName: t.lastName,
   }));
+
+  // Build map: subjectId → teacherUserIds[]
+  const teachersBySubject: Record<string, string[]> = {};
+  for (const ts of teacherSubjectRows) {
+    if (!teachersBySubject[ts.subjectId]) teachersBySubject[ts.subjectId] = [];
+    teachersBySubject[ts.subjectId].push(ts.teacherUserId);
+  }
 
   const enrolledStudents = (students as Array<{
     id: string;
@@ -91,6 +104,7 @@ export default async function ClassDetailPage({
       teachers={teachers}
       parents={parents}
       allClasses={allClassRows.filter((c) => c.id !== id).map((c) => ({ id: c.id, name: c.name }))}
+      teachersBySubject={teachersBySubject}
     />
   );
 }

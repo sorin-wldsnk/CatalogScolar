@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/casbin";
 import { getTeachers } from "@/modules/users/queries/teacher.queries";
+import { getSubjects } from "@/modules/academic/queries/subject.queries";
 import { TeachersView } from "@/modules/users/components/TeachersView";
 
 export const metadata = { title: "Profesori — Catalog Școlar" };
@@ -16,7 +17,10 @@ export default async function ProfesoriPage() {
   const schoolId = (session as { schoolId?: string }).schoolId;
   if (!schoolId) redirect("/panou-principal");
 
-  const teachers = await getTeachers(schoolId);
+  const [teachers, subjects] = await Promise.all([
+    getTeachers(schoolId),
+    getSubjects(schoolId),
+  ]);
 
-  return <TeachersView teachers={teachers} />;
+  return <TeachersView teachers={teachers} subjects={subjects} />;
 }

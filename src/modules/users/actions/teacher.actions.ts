@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { appUser, schoolMembership, userRole, role } from "@/db/schema";
+import { appUser, schoolMembership, userRole, role, teacherSubject } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { can } from "@/lib/casbin";
@@ -33,6 +33,10 @@ async function getSessionCtx() {
   return { schoolId, roles };
 }
 
+const createSchemaWithSubjects = createSchema.extend({
+  subjectIds: z.array(z.string().uuid()).optional(),
+});
+
 export async function createTeacher(data: unknown) {
   const ctx = await getSessionCtx();
   if (!ctx) return { success: false, error: "Neautentificat" };
@@ -41,12 +45,12 @@ export async function createTeacher(data: unknown) {
     return { success: false, error: "Nu aveți permisiunea necesară" };
   }
 
-  const parsed = createSchema.safeParse(data);
+  const parsed = createSchemaWithSubjects.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { firstName, lastName, email, roles: roleCodes } = parsed.data;
+  const { firstName, lastName, email, roles: roleCodes, subjectIds } = parsed.data;
   const tempPassword = randomBytes(8).toString("base64url");
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
@@ -77,6 +81,16 @@ export async function createTeacher(data: unknown) {
       for (const r of roleRows) {
         await tx.insert(userRole).values({ membershipId: membership.id, roleId: r.id });
       }
+
+      if (subjectIds && subjectIds.length > 0) {
+        await tx.insert(teacherSubject).values(
+          subjectIds.map((sid) => ({
+            schoolId: ctx.schoolId,
+            teacherUserId: user.id,
+            subjectId: sid,
+          }))
+        );
+      }
     });
 
     revalidatePath("/admin/profesori");
@@ -88,6 +102,68 @@ export async function createTeacher(data: unknown) {
     }
     return { success: false, error: "Eroare la creare" };
   }
+}
+
+export async function updateTeacherSubjects(teacherUserId: string, subjectIds: string[]) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "class", "create"))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(teacherSubject)
+      .where(
+        and(
+          eq(teacherSubject.teacherUserId, teacherUserId),
+          eq(teacherSubject.schoolId, ctx.schoolId)
+        )
+      );
+
+    if (subjectIds.length > 0) {
+      await tx.insert(teacherSubject).values(
+        subjectIds.map((sid) => ({
+          schoolId: ctx.schoolId,
+          teacherUserId,
+          subjectId: sid,
+        }))
+      );
+    }
+  });
+
+  revalidatePath(`/admin/profesori/${teacherUserId}`);
+  return { success: true };
+}
+
+export async function toggleTeacherSubject(teacherUserId: string, subjectId: string, add: boolean) {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "class", "create"))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  if (add) {
+    await db
+      .insert(teacherSubject)
+      .values({ schoolId: ctx.schoolId, teacherUserId, subjectId })
+      .onConflictDoNothing();
+  } else {
+    await db
+      .delete(teacherSubject)
+      .where(
+        and(
+          eq(teacherSubject.teacherUserId, teacherUserId),
+          eq(teacherSubject.subjectId, subjectId),
+          eq(teacherSubject.schoolId, ctx.schoolId)
+        )
+      );
+  }
+
+  revalidatePath(`/admin/profesori/${teacherUserId}`);
+  return { success: true };
 }
 
 export async function updateTeacher(id: string, data: unknown) {

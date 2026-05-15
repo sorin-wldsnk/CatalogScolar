@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Loader2, Copy, Check } from "lucide-react";
+import type { Subject } from "@/db/schema";
 
 const schema = z.object({
   firstName: z.string().min(1, "Prenumele este obligatoriu"),
@@ -34,12 +35,25 @@ type FormValues = z.infer<typeof schema>;
 interface Props {
   open: boolean;
   onClose: () => void;
+  subjects: Subject[];
 }
 
-export function TeacherModal({ open, onClose }: Props) {
+const PRIMARY_LEVELS = [0, 1, 2, 3, 4];
+const SECONDARY_LEVELS = [5, 6, 7, 8];
+const GRADE_LABELS: Record<number, string> = {
+  0: "P", 1: "I", 2: "II", 3: "III", 4: "IV",
+  5: "V", 6: "VI", 7: "VII", 8: "VIII",
+};
+
+function subjectsForLevels(subjects: Subject[], levels: number[]) {
+  return subjects.filter((s) => (s.gradeLevels ?? []).some((l) => levels.includes(l)));
+}
+
+export function TeacherModal({ open, onClose, subjects }: Props) {
   const [isPending, startTransition] = useTransition();
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -50,7 +64,16 @@ export function TeacherModal({ open, onClose }: Props) {
     reset();
     setGeneratedPassword(null);
     setCopied(false);
+    setSelectedSubjectIds(new Set());
     onClose();
+  }
+
+  function toggleSubject(id: string) {
+    setSelectedSubjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }
 
   function onSubmit(data: FormValues) {
@@ -64,6 +87,7 @@ export function TeacherModal({ open, onClose }: Props) {
         lastName: data.lastName,
         email: data.email,
         roles,
+        subjectIds: Array.from(selectedSubjectIds),
       });
 
       if (result.success && result.password) {
@@ -82,9 +106,12 @@ export function TeacherModal({ open, onClose }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const primarySubjects = subjectsForLevels(subjects, PRIMARY_LEVELS);
+  const secondarySubjects = subjectsForLevels(subjects, SECONDARY_LEVELS);
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Profesor nou</DialogTitle>
         </DialogHeader>
@@ -160,6 +187,73 @@ export function TeacherModal({ open, onClose }: Props) {
                 <p className="text-xs text-destructive">{errors.isTeacher.message}</p>
               )}
             </div>
+
+            {subjects.length > 0 && (
+              <div className="space-y-3">
+                <Label>Materii predate</Label>
+                {primarySubjects.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Primar (P–IV)
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {primarySubjects.map((s) => {
+                        const checked = selectedSubjectIds.has(s.id);
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => toggleSubject(s.id)}
+                            className={[
+                              "px-2 py-1 rounded text-xs font-medium border transition-colors",
+                              checked
+                                ? "bg-[#1e5fa8] border-[#1e5fa8] text-white"
+                                : "bg-gray-50 border-gray-200 text-gray-600 hover:border-[#1e5fa8]/50",
+                            ].join(" ")}
+                            title={s.gradeLevels?.map((l) => GRADE_LABELS[l]).join(", ")}
+                          >
+                            {s.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {secondarySubjects.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Gimnaziu (V–VIII)
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {secondarySubjects.map((s) => {
+                        const checked = selectedSubjectIds.has(s.id);
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => toggleSubject(s.id)}
+                            className={[
+                              "px-2 py-1 rounded text-xs font-medium border transition-colors",
+                              checked
+                                ? "bg-[#1e5fa8] border-[#1e5fa8] text-white"
+                                : "bg-gray-50 border-gray-200 text-gray-600 hover:border-[#1e5fa8]/50",
+                            ].join(" ")}
+                            title={s.gradeLevels?.map((l) => GRADE_LABELS[l]).join(", ")}
+                          >
+                            {s.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {selectedSubjectIds.size > 0
+                    ? `${selectedSubjectIds.size} materii selectate`
+                    : "Nicio materie selectată — poate fi configurat ulterior."}
+                </p>
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground">
               Parola temporară va fi generată automat și afișată o singură dată după creare.

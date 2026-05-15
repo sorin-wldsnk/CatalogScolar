@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { appUser, schoolMembership, userRole, role, teachingAssignment, academicYear, classGroup, subject } from "@/db/schema";
+import { appUser, schoolMembership, userRole, role, teachingAssignment, academicYear, classGroup, subject, teacherSubject } from "@/db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 
 export interface TeacherRow {
@@ -127,6 +127,52 @@ export async function getTeacherById(id: string, schoolId: string): Promise<Teac
     roles: rolesList,
     classCount: 0,
   };
+}
+
+export async function getTeacherSubjects(teacherUserId: string, schoolId: string) {
+  return db
+    .select({
+      subjectId: subject.id,
+      subjectName: subject.name,
+      subjectCode: subject.code,
+      gradeLevels: subject.gradeLevels,
+    })
+    .from(teacherSubject)
+    .innerJoin(subject, eq(teacherSubject.subjectId, subject.id))
+    .where(
+      and(
+        eq(teacherSubject.teacherUserId, teacherUserId),
+        eq(teacherSubject.schoolId, schoolId)
+      )
+    )
+    .orderBy(subject.name);
+}
+
+export async function getTeachersForSubject(subjectId: string, schoolId: string) {
+  return db
+    .select({
+      id: appUser.id,
+      firstName: appUser.firstName,
+      lastName: appUser.lastName,
+    })
+    .from(teacherSubject)
+    .innerJoin(appUser, eq(teacherSubject.teacherUserId, appUser.id))
+    .innerJoin(
+      schoolMembership,
+      and(
+        eq(schoolMembership.userId, appUser.id),
+        eq(schoolMembership.schoolId, schoolId),
+        eq(schoolMembership.isActive, true)
+      )
+    )
+    .where(
+      and(
+        eq(teacherSubject.subjectId, subjectId),
+        eq(teacherSubject.schoolId, schoolId),
+        eq(appUser.isActive, true)
+      )
+    )
+    .orderBy(appUser.lastName, appUser.firstName);
 }
 
 export async function getTeacherAssignments(teacherId: string, schoolId: string) {

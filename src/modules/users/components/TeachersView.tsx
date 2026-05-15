@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { TeacherModal } from "./TeacherModal";
 import type { TeacherRow } from "@/modules/users/queries/teacher.queries";
+import type { Subject } from "@/db/schema";
 
 const ROLE_LABEL: Record<string, string> = {
   TEACHER: "Profesor",
@@ -23,9 +24,10 @@ const ROLE_LABEL: Record<string, string> = {
 
 interface Props {
   teachers: TeacherRow[];
+  subjects: Subject[];
 }
 
-export function TeachersView({ teachers }: Props) {
+export function TeachersView({ teachers, subjects }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
@@ -103,7 +105,7 @@ export function TeachersView({ teachers }: Props) {
         </div>
       )}
 
-      <TeacherModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <TeacherModal open={modalOpen} onClose={() => setModalOpen(false)} subjects={subjects} />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { can } from "@/lib/casbin";
-import { getTeacherById, getTeacherAssignments } from "@/modules/users/queries/teacher.queries";
+import { getTeacherById, getTeacherAssignments, getTeacherSubjects } from "@/modules/users/queries/teacher.queries";
+import { getSubjects } from "@/modules/academic/queries/subject.queries";
 import { TeacherDetailView } from "@/modules/users/components/TeacherDetailView";
 
 export const metadata = { title: "Detalii profesor — Catalog Școlar" };
@@ -21,12 +22,21 @@ export default async function TeacherDetailPage({
   if (!schoolId) redirect("/panou-principal");
 
   const { id } = await params;
-  const [teacher, assignments] = await Promise.all([
+  const [teacher, assignments, teacherSubjectRows, allSubjects] = await Promise.all([
     getTeacherById(id, schoolId),
     getTeacherAssignments(id, schoolId),
+    getTeacherSubjects(id, schoolId),
+    getSubjects(schoolId),
   ]);
 
   if (!teacher) notFound();
 
-  return <TeacherDetailView teacher={teacher} assignments={assignments} />;
+  return (
+    <TeacherDetailView
+      teacher={teacher}
+      assignments={assignments}
+      allSubjects={allSubjects}
+      teacherSubjectIds={teacherSubjectRows.map((s) => s.subjectId)}
+    />
+  );
 }

@@ -22,7 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import Link from "next/link";
 
 const schema = z.object({
   teacherUserId: z.string().uuid("Selectați un profesor"),
@@ -81,6 +82,8 @@ export function AssignTeacherModal({
     });
   }
 
+  const noTeachers = teachers.length === 0;
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className="sm:max-w-sm">
@@ -89,54 +92,85 @@ export function AssignTeacherModal({
             {currentTeacherId ? "Schimbă profesorul" : "Alocă profesor"} — {subjectName}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Profesor</Label>
-            <Controller
-              name="teacherUserId"
-              control={control}
-              render={({ field }) => {
-                const teacher = teachers.find((t) => t.id === field.value);
-                return (
-                  <Select
-                    value={field.value ?? ""}
-                    onValueChange={(v) => { if (v) field.onChange(v); }}
+
+        {noTeachers ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-800">
+                  Niciun profesor nu predă această materie.
+                </p>
+                <p className="text-xs text-amber-700">
+                  Configurați materiile predate din{" "}
+                  <Link
+                    href="/admin/profesori"
+                    className="underline font-medium"
+                    onClick={handleClose}
                   >
-                    <SelectTrigger>
-                      <SelectValue>
-                        {teacher
-                          ? `${teacher.lastName} ${teacher.firstName}`
-                          : "Selectați profesorul"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.lastName} {t.firstName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                );
-              }}
-            />
-            {errors.teacherUserId && (
-              <p className="text-xs text-destructive">{errors.teacherUserId.message}</p>
-            )}
+                    /admin/profesori
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Profesor</Label>
+              <Controller
+                name="teacherUserId"
+                control={control}
+                render={({ field }) => {
+                  const teacher = teachers.find((t) => t.id === field.value);
+                  return (
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={(v) => { if (v) field.onChange(v); }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue>
+                          {teacher
+                            ? `${teacher.lastName} ${teacher.firstName}`
+                            : "Selectați profesorul"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.lastName} {t.firstName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                }}
+              />
+              {errors.teacherUserId && (
+                <p className="text-xs text-destructive">{errors.teacherUserId.message}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>
+                Anulează
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
+              >
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvează"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+
+        {noTeachers && (
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>
-              Anulează
-            </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="bg-[#1e5fa8] hover:bg-[#1a5294] text-white"
-            >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvează"}
-            </Button>
+            <Button variant="outline" onClick={handleClose}>Închide</Button>
           </DialogFooter>
-        </form>
+        )}
       </DialogContent>
     </Dialog>
   );
