@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { hash } from "bcryptjs";
+import { eq, and } from "drizzle-orm";
 import { normalizeDiacritics } from "../lib/diacritics";
 import * as schema from "./schema";
 
@@ -176,18 +177,44 @@ async function seedAcademic() {
 
   // ── Subjects ───────────────────────────────────────────────────────────────
   const subjectsData = [
-    { name: normalizeDiacritics("Matematică"), code: "MAT" },
-    { name: normalizeDiacritics("Limba română"), code: "LRO" },
-    { name: "Biologie", code: "BIO" },
-    { name: "Istorie", code: "IST" },
-    { name: normalizeDiacritics("Limba engleză"), code: "ENG" },
+    { name: "Comunicare in limba romana", code: "CLR", gradeLevels: [0,1,2] },
+    { name: "Limba si literatura romana", code: "LLR", gradeLevels: [3,4,5,6,7,8] },
+    { name: "Limba moderna / Limba moderna 1", code: "LM1", gradeLevels: [0,1,2,3,4,5,6,7,8] },
+    { name: "Limba moderna 2", code: "LM2", gradeLevels: [5,6,7,8] },
+    { name: "Elemente de limba latina si cultura romanica", code: "LAT", gradeLevels: [7] },
+    { name: "Matematica si explorarea mediului", code: "MEM", gradeLevels: [0,1,2] },
+    { name: "Matematica", code: "MAT", gradeLevels: [3,4,5,6,7,8] },
+    { name: "Stiinte ale naturii", code: "SAN", gradeLevels: [3,4] },
+    { name: "Biologie", code: "BIO", gradeLevels: [5,6,7,8] },
+    { name: "Fizica", code: "FIZ", gradeLevels: [6,7,8] },
+    { name: "Chimie", code: "CHI", gradeLevels: [7,8] },
+    { name: "Religie", code: "REL", gradeLevels: [0,1,2,3,4,5,6,7,8] },
+    { name: "Dezvoltare personala", code: "DEP", gradeLevels: [0,1,2] },
+    { name: "Consiliere si dezvoltare personala", code: "CDP", gradeLevels: [5,6,7,8] },
+    { name: "Educatie civica", code: "EDC", gradeLevels: [3,4] },
+    { name: "Educatie sociala", code: "EDS", gradeLevels: [5,6,7,8] },
+    { name: "Istorie", code: "IST", gradeLevels: [4,5,6,7,8] },
+    { name: "Geografie", code: "GEO", gradeLevels: [4,5,6,7,8] },
+    { name: "Educatie fizica", code: "EDF", gradeLevels: [0,1,2,3,4] },
+    { name: "Educatie fizica si sport", code: "EFS", gradeLevels: [5,6,7,8] },
+    { name: "Joc si miscare", code: "JOC", gradeLevels: [3,4] },
+    { name: "Muzica si miscare", code: "MUZ", gradeLevels: [0,1,2,3,4] },
+    { name: "Educatie muzicala", code: "EDM", gradeLevels: [5,6,7,8] },
+    { name: "Arte vizuale si abilitati practice", code: "AVA", gradeLevels: [0,1,2,3,4] },
+    { name: "Educatie plastica", code: "EDP", gradeLevels: [5,6,7,8] },
+    { name: "Educatie tehnologica si aplicatii practice", code: "ETP", gradeLevels: [5,6,7,8] },
+    { name: "Informatica si TIC", code: "TIC", gradeLevels: [5,6,7,8] },
+    { name: "Optional / CDS", code: "OPT", gradeLevels: [0,1,2,3,4,5,6,7,8] },
   ];
 
   for (const sub of subjectsData) {
     await db
       .insert(schema.subject)
       .values({ schoolId: school.id, ...sub })
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [schema.subject.schoolId, schema.subject.code],
+        set: { name: sub.name, gradeLevels: sub.gradeLevels },
+      });
   }
   console.log(`Subjects: ${subjectsData.length} upserted`);
 
