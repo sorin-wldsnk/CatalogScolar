@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { createStudent } from "@/modules/academic/actions/student.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,13 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
 
 const schema = z.object({
   lastName: z.string().min(1, "Numele este obligatoriu"),
   firstName: z.string().min(1, "Prenumele este obligatoriu"),
   personalId: z.string().optional(),
   dateOfBirth: z.string().optional(),
+  classId: z.string().uuid("Clasa este obligatorie"),
+  academicYearId: z.string().uuid("Anul școlar este obligatoriu"),
   parentLastName: z.string().optional(),
   parentFirstName: z.string().optional(),
   parentEmail: z.string().optional(),
@@ -47,14 +48,19 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
   OTHER: "Altul",
 };
 
+interface AvailableClass { id: string; name: string; }
+interface AvailableYear { id: string; name: string; isActive?: boolean | null; }
+
 interface Props {
   open: boolean;
   onClose: () => void;
   classId?: string;
   academicYearId?: string;
+  classes?: AvailableClass[];
+  years?: AvailableYear[];
 }
 
-export function StudentModal({ open, onClose, classId, academicYearId }: Props) {
+export function StudentModal({ open, onClose, classId, academicYearId, classes = [], years = [] }: Props) {
   const [isPending, startTransition] = useTransition();
   const [parentPassword, setParentPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -69,14 +75,18 @@ export function StudentModal({ open, onClose, classId, academicYearId }: Props) 
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { parentRelationship: "PARENT" },
+    defaultValues: {
+      parentRelationship: "PARENT",
+      classId: classId ?? "",
+      academicYearId: academicYearId ?? "",
+    },
   });
 
   const parentRelationship = watch("parentRelationship");
 
   function onSubmit(data: FormValues) {
     startTransition(async () => {
-      const result = await createStudent({ ...data, classId, academicYearId });
+      const result = await createStudent(data);
       if (result.success) {
         if (result.parentPassword) {
           setParentPassword(result.parentPassword);
@@ -91,7 +101,11 @@ export function StudentModal({ open, onClose, classId, academicYearId }: Props) 
   }
 
   function handleClose() {
-    reset();
+    reset({
+      parentRelationship: "PARENT",
+      classId: classId ?? "",
+      academicYearId: academicYearId ?? "",
+    });
     setParentPassword(null);
     setCopied(false);
     setParentOpen(false);
@@ -161,6 +175,69 @@ export function StudentModal({ open, onClose, classId, academicYearId }: Props) 
                   <Label htmlFor="dateOfBirth">Data nașterii (opțional)</Label>
                   <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
                 </div>
+              </div>
+            </div>
+
+            {/* ─── Clasă și an școlar ─── */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b pb-1">
+                Înscriere
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {years.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label>An școlar *</Label>
+                    <Controller
+                      control={control}
+                      name="academicYearId"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value ?? ""}
+                          onValueChange={(v) => v && field.onChange(v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selectați anul" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {years.map((y) => (
+                              <SelectItem key={y.id} value={y.id}>
+                                {y.name}{y.isActive ? " (Activ)" : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.academicYearId && <p className="text-xs text-destructive">{errors.academicYearId.message}</p>}
+                  </div>
+                )}
+                {classes.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label>Clasă *</Label>
+                    <Controller
+                      control={control}
+                      name="classId"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value ?? ""}
+                          onValueChange={(v) => v && field.onChange(v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selectați clasa" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {classes.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.classId && <p className="text-xs text-destructive">{errors.classId.message}</p>}
+                  </div>
+                )}
               </div>
             </div>
 

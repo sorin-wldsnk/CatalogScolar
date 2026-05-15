@@ -242,6 +242,8 @@ export function StudentsView({
         onClose={() => setModalOpen(false)}
         classId={selectedClassId}
         academicYearId={selectedYearId}
+        classes={classes}
+        years={years}
       />
       {editStudent && (
         <EditStudentModal
