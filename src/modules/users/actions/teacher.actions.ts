@@ -166,6 +166,90 @@ export async function toggleTeacherSubject(teacherUserId: string, subjectId: str
   return { success: true };
 }
 
+export async function addRoleToTeacher(teacherId: string, roleCode: "HOMEROOM") {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "class", "create"))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const [membership] = await db
+    .select({ id: schoolMembership.id })
+    .from(schoolMembership)
+    .where(
+      and(
+        eq(schoolMembership.userId, teacherId),
+        eq(schoolMembership.schoolId, ctx.schoolId),
+        eq(schoolMembership.isActive, true)
+      )
+    )
+    .limit(1);
+
+  if (!membership) return { success: false, error: "Profesorul nu a fost găsit" };
+
+  const [roleRow] = await db
+    .select({ id: role.id })
+    .from(role)
+    .where(eq(role.code, roleCode))
+    .limit(1);
+
+  if (!roleRow) return { success: false, error: "Rolul nu a fost găsit" };
+
+  await db
+    .insert(userRole)
+    .values({ membershipId: membership.id, roleId: roleRow.id })
+    .onConflictDoNothing();
+
+  revalidatePath("/admin/profesori");
+  revalidatePath(`/admin/profesori/${teacherId}`);
+  return { success: true };
+}
+
+export async function removeRoleFromTeacher(teacherId: string, roleCode: "HOMEROOM") {
+  const ctx = await getSessionCtx();
+  if (!ctx) return { success: false, error: "Neautentificat" };
+
+  if (!(await can(ctx.roles, "class", "create"))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const [membership] = await db
+    .select({ id: schoolMembership.id })
+    .from(schoolMembership)
+    .where(
+      and(
+        eq(schoolMembership.userId, teacherId),
+        eq(schoolMembership.schoolId, ctx.schoolId),
+        eq(schoolMembership.isActive, true)
+      )
+    )
+    .limit(1);
+
+  if (!membership) return { success: false, error: "Profesorul nu a fost găsit" };
+
+  const [roleRow] = await db
+    .select({ id: role.id })
+    .from(role)
+    .where(eq(role.code, roleCode))
+    .limit(1);
+
+  if (!roleRow) return { success: false, error: "Rolul nu a fost găsit" };
+
+  await db
+    .delete(userRole)
+    .where(
+      and(
+        eq(userRole.membershipId, membership.id),
+        eq(userRole.roleId, roleRow.id)
+      )
+    );
+
+  revalidatePath("/admin/profesori");
+  revalidatePath(`/admin/profesori/${teacherId}`);
+  return { success: true };
+}
+
 export async function updateTeacher(id: string, data: unknown) {
   const ctx = await getSessionCtx();
   if (!ctx) return { success: false, error: "Neautentificat" };

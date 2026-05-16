@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { updateTeacher, toggleTeacherSubject } from "@/modules/users/actions/teacher.actions";
+import { updateTeacher, toggleTeacherSubject, addRoleToTeacher, removeRoleFromTeacher } from "@/modules/users/actions/teacher.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import type { TeacherRow } from "@/modules/users/queries/teacher.queries";
 import type { Subject } from "@/db/schema";
 
@@ -62,6 +69,9 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
   const [isPending, startTransition] = useTransition();
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set(teacherSubjectIds));
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [roles, setRoles] = useState<string[]>(teacher.roles);
+  const [confirmRemoveHomeroom, setConfirmRemoveHomeroom] = useState(false);
+  const [togglingRole, startRoleTransition] = useTransition();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -103,6 +113,35 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
         });
       }
       setTogglingId(null);
+    });
+  }
+
+  function handleToggleHomeroom(checked: boolean) {
+    if (!checked) {
+      setConfirmRemoveHomeroom(true);
+      return;
+    }
+    startRoleTransition(async () => {
+      const result = await addRoleToTeacher(teacher.id, "HOMEROOM");
+      if (result.success) {
+        setRoles((prev) => prev.includes("HOMEROOM") ? prev : [...prev, "HOMEROOM"]);
+        toast.success("Rolul Diriginte/Învățător a fost adăugat");
+      } else {
+        toast.error(result.error ?? "Eroare");
+      }
+    });
+  }
+
+  function handleConfirmRemoveHomeroom() {
+    setConfirmRemoveHomeroom(false);
+    startRoleTransition(async () => {
+      const result = await removeRoleFromTeacher(teacher.id, "HOMEROOM");
+      if (result.success) {
+        setRoles((prev) => prev.filter((r) => r !== "HOMEROOM"));
+        toast.success("Rolul Diriginte/Învățător a fost eliminat");
+      } else {
+        toast.error(result.error ?? "Eroare");
+      }
     });
   }
 
@@ -170,6 +209,29 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
                     Profesorul nu și-a schimbat încă parola temporară.
                   </p>
                 )}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5">Roluri active</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex gap-1.5">
+                      {roles.map((r) => (
+                        <Badge key={r} variant="outline" className="text-xs border-[#1e5fa8]/30 text-[#1e5fa8]">
+                          {ROLE_LABEL[r] ?? r}
+                        </Badge>
+                      ))}
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={roles.includes("HOMEROOM")}
+                        disabled={togglingRole}
+                        onChange={(e) => handleToggleHomeroom(e.target.checked)}
+                        className="h-4 w-4 accent-[#1e5fa8]"
+                      />
+                      <span className="text-sm text-muted-foreground">Diriginte / Învățător</span>
+                      {togglingRole && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    </label>
+                  </div>
+                </div>
               </div>
               <Button
                 variant="outline"
@@ -349,6 +411,40 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
           )}
         </>
       )}
+
+      {/* Dialog confirmare eliminare rol HOMEROOM */}
+      <Dialog open={confirmRemoveHomeroom} onOpenChange={(o) => { if (!o) setConfirmRemoveHomeroom(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Eliminare rol Diriginte/Învățător
+            </DialogTitle>
+            <DialogDescription>
+              Atenție: dacă acest profesor este alocat ca diriginte la o clasă,
+              va pierde drepturile aferente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmRemoveHomeroom(false)}
+              disabled={togglingRole}
+            >
+              Anulează
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleConfirmRemoveHomeroom}
+              disabled={togglingRole}
+            >
+              {togglingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : "Elimină rolul"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

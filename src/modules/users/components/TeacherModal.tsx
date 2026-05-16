@@ -23,11 +23,7 @@ const schema = z.object({
   firstName: z.string().min(1, "Prenumele este obligatoriu"),
   lastName: z.string().min(1, "Numele este obligatoriu"),
   email: z.string().email("Email invalid"),
-  isTeacher: z.boolean(),
   isHomeroom: z.boolean(),
-}).refine((d) => d.isTeacher || d.isHomeroom, {
-  message: "Selectați cel puțin un rol",
-  path: ["isTeacher"],
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -57,7 +53,7 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { isTeacher: true, isHomeroom: false },
+    defaultValues: { isHomeroom: false },
   });
 
   function handleClose() {
@@ -77,8 +73,7 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
   }
 
   function onSubmit(data: FormValues) {
-    const roles: ("TEACHER" | "HOMEROOM")[] = [];
-    if (data.isTeacher) roles.push("TEACHER");
+    const roles: ("TEACHER" | "HOMEROOM")[] = ["TEACHER"];
     if (data.isHomeroom) roles.push("HOMEROOM");
 
     startTransition(async () => {
@@ -173,19 +168,17 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
 
             <div className="space-y-2">
               <Label>Roluri</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" {...register("isTeacher")} className="h-4 w-4 accent-[#1e5fa8]" />
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 cursor-not-allowed opacity-60">
+                  <input type="checkbox" checked disabled className="h-4 w-4 accent-[#1e5fa8]" />
                   <span className="text-sm">Profesor</span>
+                  <span className="text-xs text-muted-foreground">(implicit)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" {...register("isHomeroom")} className="h-4 w-4 accent-[#1e5fa8]" />
-                  <span className="text-sm">Diriginte</span>
+                  <span className="text-sm">Diriginte / Învățător</span>
                 </label>
               </div>
-              {errors.isTeacher && (
-                <p className="text-xs text-destructive">{errors.isTeacher.message}</p>
-              )}
             </div>
 
             {subjects.length > 0 && (
