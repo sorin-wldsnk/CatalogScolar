@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, unique, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, unique, integer, boolean } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { school } from "./school";
 
@@ -12,6 +12,7 @@ export const subject = pgTable(
     name: text("name").notNull(),
     code: text("code").notNull(),
     gradeLevels: integer("grade_levels").array().notNull().default([0,1,2,3,4,5,6,7,8]),
+    isItinerant: boolean("is_itinerant").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },

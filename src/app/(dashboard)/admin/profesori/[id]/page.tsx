@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { can } from "@/lib/casbin";
 import { getTeacherById, getTeacherAssignments, getTeacherSubjects } from "@/modules/users/queries/teacher.queries";
-import { getSubjects } from "@/modules/academic/queries/subject.queries";
+import { getSubjectsForTeacherForm } from "@/modules/academic/queries/subject.queries";
 import { TeacherDetailView } from "@/modules/users/components/TeacherDetailView";
 
 export const metadata = { title: "Detalii profesor — Catalog Școlar" };
@@ -26,7 +26,7 @@ export default async function TeacherDetailPage({
     getTeacherById(id, schoolId),
     getTeacherAssignments(id, schoolId),
     getTeacherSubjects(id, schoolId),
-    getSubjects(schoolId),
+    getSubjectsForTeacherForm(schoolId),
   ]);
 
   if (!teacher) notFound();

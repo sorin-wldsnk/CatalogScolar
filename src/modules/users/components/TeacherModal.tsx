@@ -34,15 +34,13 @@ interface Props {
   subjects: Subject[];
 }
 
-const PRIMARY_LEVELS = [0, 1, 2, 3, 4];
 const SECONDARY_LEVELS = [5, 6, 7, 8];
-const GRADE_LABELS: Record<number, string> = {
-  0: "P", 1: "I", 2: "II", 3: "III", 4: "IV",
-  5: "V", 6: "VI", 7: "VII", 8: "VIII",
-};
 
-function subjectsForLevels(subjects: Subject[], levels: number[]) {
-  return subjects.filter((s) => (s.gradeLevels ?? []).some((l) => levels.includes(l)));
+function isSecondarySubject(s: Subject) {
+  return (s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
+}
+function isItinerantPrimarySubject(s: Subject) {
+  return s.isItinerant && !(s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
 }
 
 export function TeacherModal({ open, onClose, subjects }: Props) {
@@ -101,8 +99,8 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const primarySubjects = subjectsForLevels(subjects, PRIMARY_LEVELS);
-  const secondarySubjects = subjectsForLevels(subjects, SECONDARY_LEVELS);
+  const primaryItinerantSubjects = subjects.filter(isItinerantPrimarySubject);
+  const secondarySubjects = subjects.filter(isSecondarySubject);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
@@ -184,13 +182,13 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
             {subjects.length > 0 && (
               <div className="space-y-3">
                 <Label>Materii predate</Label>
-                {primarySubjects.length > 0 && (
+                {primaryItinerantSubjects.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Primar (P–IV)
+                      Primar — itinerante
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {primarySubjects.map((s) => {
+                      {primaryItinerantSubjects.map((s) => {
                         const checked = selectedSubjectIds.has(s.id);
                         return (
                           <button
@@ -203,7 +201,6 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
                                 ? "bg-[#1e5fa8] border-[#1e5fa8] text-white"
                                 : "bg-gray-50 border-gray-200 text-gray-600 hover:border-[#1e5fa8]/50",
                             ].join(" ")}
-                            title={s.gradeLevels?.map((l) => GRADE_LABELS[l]).join(", ")}
                           >
                             {s.name}
                           </button>
@@ -231,7 +228,7 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
                                 ? "bg-[#1e5fa8] border-[#1e5fa8] text-white"
                                 : "bg-gray-50 border-gray-200 text-gray-600 hover:border-[#1e5fa8]/50",
                             ].join(" ")}
-                            title={s.gradeLevels?.map((l) => GRADE_LABELS[l]).join(", ")}
+                            title={s.gradeLevels?.join(", ")}
                           >
                             {s.name}
                           </button>

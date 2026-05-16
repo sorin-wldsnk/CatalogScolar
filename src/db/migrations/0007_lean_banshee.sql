@@ -1,0 +1,1 @@
+ALTER TABLE "subject" ADD COLUMN "is_itinerant" boolean DEFAULT false NOT NULL;

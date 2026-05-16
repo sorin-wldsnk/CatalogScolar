@@ -41,7 +41,6 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-const PRIMARY_LEVELS = [0, 1, 2, 3, 4];
 const SECONDARY_LEVELS = [5, 6, 7, 8];
 
 interface AssignmentRow {
@@ -59,8 +58,12 @@ interface Props {
   teacherSubjectIds: string[];
 }
 
-function subjectsForLevels(subjects: Subject[], levels: number[]) {
-  return subjects.filter((s) => (s.gradeLevels ?? []).some((l) => levels.includes(l)));
+function isSecondarySubject(s: Subject) {
+  return (s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
+}
+
+function isItinerantPrimarySubject(s: Subject) {
+  return s.isItinerant && !(s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
 }
 
 export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSubjectIds }: Props) {
@@ -145,8 +148,8 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
     });
   }
 
-  const primarySubjects = subjectsForLevels(allSubjects, PRIMARY_LEVELS);
-  const secondarySubjects = subjectsForLevels(allSubjects, SECONDARY_LEVELS);
+  const secondarySubjects = allSubjects.filter(isSecondarySubject);
+  const itinerantPrimarySubjects = allSubjects.filter(isItinerantPrimarySubject);
 
   return (
     <div className="space-y-6">
@@ -299,13 +302,13 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
             Bifați materiile pe care le predă acest profesor. Acestea vor fi disponibile la alocare în încadrări.
           </p>
 
-          {primarySubjects.length > 0 && (
+          {itinerantPrimarySubjects.length > 0 && (
             <div className="rounded-xl border bg-white p-4 space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Primar (P–IV)
+                Primar — itinerante (sport, engleză, religie, opțional)
               </p>
               <div className="flex flex-wrap gap-2">
-                {primarySubjects.map((s) => {
+                {itinerantPrimarySubjects.map((s) => {
                   const checked = checkedIds.has(s.id);
                   const toggling = togglingId === s.id;
                   return (

@@ -71,6 +71,27 @@ export async function updateSubjectGradeLevels(id: string, gradeLevels: number[]
   return { success: true };
 }
 
+export async function updateSubjectIsItinerant(id: string, isItinerant: boolean) {
+  const session = await auth();
+  if (!session?.user) return { success: false, error: "Neautentificat" };
+
+  const roles = (session as { roles?: string[] }).roles ?? [];
+  if (!(await can(roles, "subject", "create" as never))) {
+    return { success: false, error: "Nu aveți permisiunea necesară" };
+  }
+
+  const schoolId = (session as { schoolId?: string }).schoolId;
+  if (!schoolId) return { success: false, error: "Școala nu a fost găsită" };
+
+  await db
+    .update(subject)
+    .set({ isItinerant, updatedAt: new Date() })
+    .where(and(eq(subject.id, id), eq(subject.schoolId, schoolId)));
+
+  revalidatePath("/admin/materii");
+  return { success: true };
+}
+
 export async function updateSubject(id: string, data: unknown) {
   const session = await auth();
   if (!session?.user) return { success: false, error: "Neautentificat" };

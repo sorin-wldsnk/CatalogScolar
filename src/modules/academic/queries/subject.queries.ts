@@ -42,6 +42,22 @@ export async function getSubjectsForClass(classId: string, academicYearId: strin
     .orderBy(subject.name);
 }
 
+export async function getSubjectsForTeacherForm(schoolId: string) {
+  return db
+    .select()
+    .from(subject)
+    .where(
+      and(
+        eq(subject.schoolId, schoolId),
+        sql`(
+          ${subject.gradeLevels} && ARRAY[5,6,7,8]::integer[]
+          OR (${subject.gradeLevels} && ARRAY[0,1,2,3,4]::integer[] AND ${subject.isItinerant} = true)
+        )`
+      )
+    )
+    .orderBy(subject.name);
+}
+
 export async function getSubjectById(id: string, schoolId: string) {
   const [s] = await db
     .select()

@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SubjectModal } from "./SubjectModal";
-import { updateSubjectGradeLevels } from "@/modules/academic/actions/subject.actions";
+import { updateSubjectGradeLevels, updateSubjectIsItinerant } from "@/modules/academic/actions/subject.actions";
 import type { Subject } from "@/db/schema";
 
 const GRADE_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
@@ -90,6 +90,26 @@ export function SubjectsView({ subjects: initialSubjects }: Props) {
     });
   }
 
+  function handleToggleItinerant(subjectId: string) {
+    const sub = subjects.find((s) => s.id === subjectId);
+    if (!sub) return;
+    const newValue = !sub.isItinerant;
+    setSubjects((prev) =>
+      prev.map((s) => s.id === subjectId ? { ...s, isItinerant: newValue } : s)
+    );
+    setPendingId(subjectId);
+    startTransition(async () => {
+      const result = await updateSubjectIsItinerant(subjectId, newValue);
+      if (!result.success) {
+        toast.error(result.error ?? "Eroare la salvare");
+        setSubjects((prev) =>
+          prev.map((s) => s.id === subjectId ? { ...s, isItinerant: !newValue } : s)
+        );
+      }
+      setPendingId(null);
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -124,6 +144,12 @@ export function SubjectsView({ subjects: initialSubjects }: Props) {
                     {GRADE_LABELS[l]}
                   </TableHead>
                 ))}
+                <TableHead
+                  className="w-20 text-center text-xs cursor-help"
+                  title="Materie predată de profesor extern la clasele primare (sport, engleză, religie etc.)"
+                >
+                  Itinerant
+                </TableHead>
                 <TableHead className="w-8" />
               </TableRow>
             </TableHeader>
@@ -150,6 +176,23 @@ export function SubjectsView({ subjects: initialSubjects }: Props) {
                         />
                       </TableCell>
                     ))}
+                    <TableCell className="text-center">
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleToggleItinerant(s.id)}
+                        title="Materie itinerantă (predată de profesor extern la primar)"
+                        className={[
+                          "w-7 h-7 rounded flex items-center justify-center text-xs font-bold transition-colors border mx-auto",
+                          s.isItinerant
+                            ? "bg-amber-100 border-amber-400 text-amber-700 hover:bg-amber-200"
+                            : "bg-gray-50 border-gray-200 text-gray-300 hover:bg-gray-100",
+                          isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                        ].join(" ")}
+                      >
+                        {s.isItinerant ? "✓" : "✗"}
+                      </button>
+                    </TableCell>
                     <TableCell>
                       {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                     </TableCell>
