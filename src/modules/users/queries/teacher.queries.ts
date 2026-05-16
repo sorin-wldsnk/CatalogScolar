@@ -164,6 +164,51 @@ export async function getHomeroomTeachers(schoolId: string) {
   });
 }
 
+export async function getAvailableHomeroomTeachers(
+  schoolId: string,
+  academicYearId: string,
+  currentClassId: string
+) {
+  const rows = await db
+    .select({
+      id: appUser.id,
+      firstName: appUser.firstName,
+      lastName: appUser.lastName,
+    })
+    .from(appUser)
+    .innerJoin(
+      schoolMembership,
+      and(
+        eq(schoolMembership.userId, appUser.id),
+        eq(schoolMembership.schoolId, schoolId),
+        eq(schoolMembership.isActive, true)
+      )
+    )
+    .innerJoin(userRole, eq(userRole.membershipId, schoolMembership.id))
+    .innerJoin(role, eq(userRole.roleId, role.id))
+    .where(
+      and(
+        eq(appUser.isActive, true),
+        eq(role.code, "HOMEROOM"),
+        sql`${appUser.id} NOT IN (
+          SELECT ${classGroup.homeroomTeacherId}
+          FROM ${classGroup}
+          WHERE ${classGroup.academicYearId} = ${academicYearId}
+            AND ${classGroup.homeroomTeacherId} IS NOT NULL
+            AND ${classGroup.id} != ${currentClassId}
+        )`
+      )
+    )
+    .orderBy(appUser.lastName, appUser.firstName);
+
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    if (seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
+}
+
 export async function getTeacherSubjects(teacherUserId: string, schoolId: string) {
   return db
     .select({
