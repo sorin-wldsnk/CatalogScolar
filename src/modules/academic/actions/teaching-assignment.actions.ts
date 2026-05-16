@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { can } from "@/lib/casbin";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { ensureTeacherAndHomeroomRoles } from "@/lib/ensure-teacher-roles";
 
 async function getSessionCtx() {
   const session = await auth();
@@ -158,6 +159,8 @@ export async function setMainTeacher(classId: string, teacherUserId: string, aca
       }))
     );
   });
+
+  await ensureTeacherAndHomeroomRoles(teacherUserId, ctx.schoolId);
 
   revalidatePath(`/admin/clase/${classId}`);
   return { success: true };

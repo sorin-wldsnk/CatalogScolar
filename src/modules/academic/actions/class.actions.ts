@@ -1,8 +1,9 @@
 "use server";
 
 import { db } from "@/db";
-import { classGroup, appUser, schoolMembership, userRole, role } from "@/db/schema";
+import { classGroup } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { ensureTeacherAndHomeroomRoles } from "@/lib/ensure-teacher-roles";
 import { auth } from "@/auth";
 import { can } from "@/lib/casbin";
 import { z } from "zod";
@@ -85,33 +86,8 @@ export async function assignHomeroomTeacher(classId: string, teacherUserId: stri
     .set({ homeroomTeacherId: teacherUserId, updatedAt: new Date() })
     .where(and(eq(classGroup.id, classId), eq(classGroup.schoolId, schoolId)));
 
-  // Dacă s-a alocat un profesor, asigură că are rolul HOMEROOM
   if (teacherUserId) {
-    const [membership] = await db
-      .select({ id: schoolMembership.id })
-      .from(schoolMembership)
-      .where(and(eq(schoolMembership.userId, teacherUserId), eq(schoolMembership.schoolId, schoolId)))
-      .limit(1);
-
-    if (membership) {
-      const [homeroomRole] = await db
-        .select({ id: role.id })
-        .from(role)
-        .where(eq(role.code, "HOMEROOM"))
-        .limit(1);
-
-      if (homeroomRole) {
-        const existing = await db
-          .select({ id: userRole.id })
-          .from(userRole)
-          .where(and(eq(userRole.membershipId, membership.id), eq(userRole.roleId, homeroomRole.id)))
-          .limit(1);
-
-        if (!existing.length) {
-          await db.insert(userRole).values({ membershipId: membership.id, roleId: homeroomRole.id });
-        }
-      }
-    }
+    await ensureTeacherAndHomeroomRoles(teacherUserId, schoolId);
   }
 
   revalidatePath("/admin/clase");
