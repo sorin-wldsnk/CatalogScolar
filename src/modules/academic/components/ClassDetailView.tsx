@@ -153,7 +153,7 @@ export function ClassDetailView({
   }
 
   const gradeLevelLabel = gradeLevel === 0 ? "Pregătitoare" : `Clasa ${gradeLevel}`;
-  const selectedMainTeacher = teachers.find((t) => t.id === selectedMainTeacherId);
+  const selectedMainTeacher = homeroomTeachers.find((t) => t.id === selectedMainTeacherId);
 
   return (
     <div className="space-y-6">
@@ -397,28 +397,36 @@ export function ClassDetailView({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Select
-              value={selectedMainTeacherId}
-              onValueChange={(v) => { if (v) setSelectedMainTeacherId(v); }}
-            >
-              <SelectTrigger>
-                <SelectValue>
-                  {selectedMainTeacherId
-                    ? (() => {
-                        const t = teachers.find((t) => t.id === selectedMainTeacherId);
-                        return t ? `${t.lastName} ${t.firstName}` : "Selectați profesorul";
-                      })()
-                    : "Selectați profesorul"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {teachers.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.lastName} {t.firstName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {homeroomTeachers.length === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 leading-relaxed">
+                Toți diriginții sunt deja alocați la clase. Adăugați mai mulți profesori cu rol Diriginte/Învățător din{" "}
+                <a href="/admin/profesori" className="underline font-medium">/admin/profesori</a>.
+              </div>
+            )}
+            {homeroomTeachers.length > 0 && (
+              <Select
+                value={selectedMainTeacherId}
+                onValueChange={(v) => { if (v) setSelectedMainTeacherId(v); }}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {selectedMainTeacherId
+                      ? (() => {
+                          const t = homeroomTeachers.find((t) => t.id === selectedMainTeacherId);
+                          return t ? `${t.lastName} ${t.firstName}` : "Selectați profesorul";
+                        })()
+                      : "Selectați profesorul"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {homeroomTeachers.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.lastName} {t.firstName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {selectedMainTeacher && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 leading-relaxed">
