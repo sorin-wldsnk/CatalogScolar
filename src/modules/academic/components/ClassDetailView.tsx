@@ -62,6 +62,7 @@ interface Props {
   students: EleviClassaStudentRow[];
   unenrolledStudents: { id: string; firstName: string; lastName: string }[];
   teachers: Teacher[];
+  homeroomTeachers: Teacher[];
   parents: ClassParentRow[];
   allClasses: AvailableClass[];
   teachersBySubject: Record<string, string[]>;
@@ -79,6 +80,7 @@ export function ClassDetailView({
   subjects,
   students,
   teachers,
+  homeroomTeachers,
   parents,
   allClasses,
   teachersBySubject,
@@ -337,6 +339,14 @@ export function ClassDetailView({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {homeroomTeachers.length === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 leading-relaxed">
+                ⚠️ Niciun profesor nu are rolul Diriginte/Învățător configurat.
+                Afișăm toți profesorii. Puteți configura rolurile din{" "}
+                <a href="/admin/profesori" className="underline font-medium">/admin/profesori</a>.
+                La alocare, rolul se adaugă automat.
+              </div>
+            )}
             <Select
               value={selectedHomeroomId ?? ""}
               onValueChange={(v) => { if (v) setSelectedHomeroomId(v); }}
@@ -345,14 +355,16 @@ export function ClassDetailView({
                 <SelectValue>
                   {selectedHomeroomId
                     ? (() => {
-                        const t = teachers.find((t) => t.id === selectedHomeroomId);
+                        const all = homeroomTeachers.length > 0 ? homeroomTeachers : teachers;
+                        const t = all.find((t) => t.id === selectedHomeroomId)
+                          ?? teachers.find((t) => t.id === selectedHomeroomId);
                         return t ? `${t.lastName} ${t.firstName}` : "Selectați dirigintele";
                       })()
                     : "Selectați dirigintele"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {teachers.map((t) => (
+                {(homeroomTeachers.length > 0 ? homeroomTeachers : teachers).map((t) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.lastName} {t.firstName}
                   </SelectItem>

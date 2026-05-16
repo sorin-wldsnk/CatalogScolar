@@ -129,6 +129,41 @@ export async function getTeacherById(id: string, schoolId: string): Promise<Teac
   };
 }
 
+export async function getHomeroomTeachers(schoolId: string) {
+  const rows = await db
+    .select({
+      id: appUser.id,
+      firstName: appUser.firstName,
+      lastName: appUser.lastName,
+    })
+    .from(appUser)
+    .innerJoin(
+      schoolMembership,
+      and(
+        eq(schoolMembership.userId, appUser.id),
+        eq(schoolMembership.schoolId, schoolId),
+        eq(schoolMembership.isActive, true)
+      )
+    )
+    .innerJoin(userRole, eq(userRole.membershipId, schoolMembership.id))
+    .innerJoin(role, eq(userRole.roleId, role.id))
+    .where(
+      and(
+        eq(appUser.isActive, true),
+        eq(role.code, "HOMEROOM")
+      )
+    )
+    .orderBy(appUser.lastName, appUser.firstName);
+
+  // Deduplicate (teacher may have multiple roles)
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    if (seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
+}
+
 export async function getTeacherSubjects(teacherUserId: string, schoolId: string) {
   return db
     .select({

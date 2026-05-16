@@ -5,7 +5,7 @@ import { getClassById, getClasses } from "@/modules/academic/queries/class.queri
 import { getActiveAcademicYear } from "@/modules/academic/queries/academic-year.queries";
 import { getSubjectsForClass } from "@/modules/academic/queries/subject.queries";
 import { getStudents, getUnenrolledStudents } from "@/modules/academic/queries/student.queries";
-import { getTeachers } from "@/modules/users/queries/teacher.queries";
+import { getTeachers, getHomeroomTeachers } from "@/modules/users/queries/teacher.queries";
 import { getClassParents } from "@/modules/academic/queries/class-parents.queries";
 import { ClassDetailView } from "@/modules/academic/components/ClassDetailView";
 import { db } from "@/db";
@@ -40,11 +40,12 @@ export default async function ClassDetailPage({
   const academicYearId = p.an ?? classInfo.academicYearId ?? activeYear?.id ?? "";
   if (!academicYearId) redirect("/admin/clase");
 
-  const [subjects, students, unenrolledStudents, teacherRows, parents, allClassRows, teacherSubjectRows] = await Promise.all([
+  const [subjects, students, unenrolledStudents, teacherRows, homeroomTeacherRows, parents, allClassRows, teacherSubjectRows] = await Promise.all([
     getSubjectsForClass(id, academicYearId, schoolId),
     getStudents(schoolId, { classId: id, academicYearId }),
     getUnenrolledStudents(schoolId, academicYearId),
     getTeachers(schoolId),
+    getHomeroomTeachers(schoolId),
     getClassParents(id, academicYearId, schoolId),
     getClasses(schoolId, academicYearId),
     db.select({ teacherUserId: teacherSubject.teacherUserId, subjectId: teacherSubject.subjectId })
@@ -53,6 +54,12 @@ export default async function ClassDetailPage({
   ]);
 
   const teachers = teacherRows.map((t) => ({
+    id: t.id,
+    firstName: t.firstName,
+    lastName: t.lastName,
+  }));
+
+  const homeroomTeachers = homeroomTeacherRows.map((t) => ({
     id: t.id,
     firstName: t.firstName,
     lastName: t.lastName,
@@ -102,6 +109,7 @@ export default async function ClassDetailPage({
       students={enrolledStudents}
       unenrolledStudents={unenrolledStudents}
       teachers={teachers}
+      homeroomTeachers={homeroomTeachers}
       parents={parents}
       allClasses={allClassRows.filter((c) => c.id !== id).map((c) => ({ id: c.id, name: c.name }))}
       teachersBySubject={teachersBySubject}
