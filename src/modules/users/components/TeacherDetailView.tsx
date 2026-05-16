@@ -58,12 +58,8 @@ interface Props {
   teacherSubjectIds: string[];
 }
 
-function isSecondarySubject(s: Subject) {
-  return (s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
-}
-
-function isItinerantPrimarySubject(s: Subject) {
-  return s.isItinerant && !(s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
+function isSecondaryNonItinerant(s: Subject) {
+  return (s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l)) && !s.isItinerant;
 }
 
 export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSubjectIds }: Props) {
@@ -148,8 +144,8 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
     });
   }
 
-  const secondarySubjects = allSubjects.filter(isSecondarySubject);
-  const itinerantPrimarySubjects = allSubjects.filter(isItinerantPrimarySubject);
+  const itinerantSubjects = allSubjects.filter((s) => s.isItinerant);
+  const secondarySubjects = allSubjects.filter(isSecondaryNonItinerant);
 
   return (
     <div className="space-y-6">
@@ -302,13 +298,13 @@ export function TeacherDetailView({ teacher, assignments, allSubjects, teacherSu
             Bifați materiile pe care le predă acest profesor. Acestea vor fi disponibile la alocare în încadrări.
           </p>
 
-          {itinerantPrimarySubjects.length > 0 && (
+          {itinerantSubjects.length > 0 && (
             <div className="rounded-xl border bg-white p-4 space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Primar — itinerante (sport, engleză, religie, opțional)
               </p>
               <div className="flex flex-wrap gap-2">
-                {itinerantPrimarySubjects.map((s) => {
+                {itinerantSubjects.map((s) => {
                   const checked = checkedIds.has(s.id);
                   const toggling = togglingId === s.id;
                   return (

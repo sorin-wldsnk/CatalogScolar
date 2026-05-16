@@ -36,11 +36,8 @@ interface Props {
 
 const SECONDARY_LEVELS = [5, 6, 7, 8];
 
-function isSecondarySubject(s: Subject) {
-  return (s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
-}
-function isItinerantPrimarySubject(s: Subject) {
-  return s.isItinerant && !(s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l));
+function isSecondaryNonItinerant(s: Subject) {
+  return (s.gradeLevels ?? []).some((l) => SECONDARY_LEVELS.includes(l)) && !s.isItinerant;
 }
 
 export function TeacherModal({ open, onClose, subjects }: Props) {
@@ -99,8 +96,8 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const primaryItinerantSubjects = subjects.filter(isItinerantPrimarySubject);
-  const secondarySubjects = subjects.filter(isSecondarySubject);
+  const itinerantSubjects = subjects.filter((s) => s.isItinerant);
+  const secondarySubjects = subjects.filter(isSecondaryNonItinerant);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
@@ -182,13 +179,13 @@ export function TeacherModal({ open, onClose, subjects }: Props) {
             {subjects.length > 0 && (
               <div className="space-y-3">
                 <Label>Materii predate</Label>
-                {primaryItinerantSubjects.length > 0 && (
+                {itinerantSubjects.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Primar — itinerante
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {primaryItinerantSubjects.map((s) => {
+                      {itinerantSubjects.map((s) => {
                         const checked = selectedSubjectIds.has(s.id);
                         return (
                           <button
