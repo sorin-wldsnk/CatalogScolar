@@ -17,6 +17,7 @@ export async function getSubjectsForClass(classId: string, academicYearId: strin
       subjectName: subject.name,
       subjectCode: subject.code,
       gradeLevels: subject.gradeLevels,
+      isItinerant: subject.isItinerant,
       assignmentId: teachingAssignment.id,
       teacherUserId: teachingAssignment.teacherUserId,
       teacherFirstName: appUser.firstName,

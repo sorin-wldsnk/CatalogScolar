@@ -39,6 +39,7 @@ interface SubjectRow {
   subjectId: string;
   subjectName: string;
   subjectCode: string;
+  isItinerant: boolean;
   assignmentId: string | null;
   teacherUserId: string | null;
   teacherFirstName: string | null;
@@ -264,55 +265,88 @@ export function ClassDetailView({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {subjects.map((s) => (
-                  <TableRow key={s.subjectId}>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-2">
-                        <span className="text-xs font-mono font-semibold bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                          {s.subjectCode}
+                {subjects.map((s) => {
+                  const allocated = !!s.assignmentId;
+                  const itinerantWarning = allocated && s.isItinerant && isPrimary;
+                  const allocatedOk = allocated && !itinerantWarning;
+
+                  return (
+                    <TableRow
+                      key={s.subjectId}
+                      className={itinerantWarning ? "bg-amber-50" : ""}
+                    >
+                      <TableCell>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="text-xs font-mono font-semibold bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                            {s.subjectCode}
+                          </span>
+                          <span className={itinerantWarning ? "text-amber-800" : allocated ? "text-[#1e3a5f]" : "text-muted-foreground"}>
+                            {s.subjectName}
+                          </span>
                         </span>
-                        {s.subjectName}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {s.teacherLastName ? (
-                        <span className="font-medium">{s.teacherLastName} {s.teacherFirstName}</span>
-                      ) : (
-                        <span className="text-muted-foreground italic text-sm">Nealocat</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => setAssignModal(s)}
-                        >
-                          {s.assignmentId ? "Schimbă" : "Alocă profesor"}
-                        </Button>
-                        {s.assignmentId && (
+                      </TableCell>
+                      <TableCell>
+                        {s.teacherLastName ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className={`font-medium ${itinerantWarning ? "text-amber-700" : "text-green-700"}`}>
+                              {s.teacherLastName} {s.teacherFirstName}
+                            </span>
+                            {allocatedOk && (
+                              <span className="text-xs text-green-600 font-semibold">✓</span>
+                            )}
+                            {itinerantWarning && (
+                              <span
+                                className="text-xs text-amber-600 font-semibold cursor-help"
+                                title="Materie predată de obicei de profesor extern. Verificați că alocarea este corectă."
+                              >
+                                ⚠ Verificați
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground italic text-sm">Nealocat</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-red-50"
-                            disabled={isPending && removingAssignmentId === s.assignmentId}
-                            onClick={() => handleRemoveAssignment(s.assignmentId!)}
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => setAssignModal(s)}
                           >
-                            {isPending && removingAssignmentId === s.assignmentId ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
-                            )}
+                            {s.assignmentId ? "Schimbă" : "Alocă profesor"}
                           </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {s.assignmentId && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-red-50"
+                              disabled={isPending && removingAssignmentId === s.assignmentId}
+                              onClick={() => handleRemoveAssignment(s.assignmentId!)}
+                            >
+                              {isPending && removingAssignmentId === s.assignmentId ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
+          {isPrimary && (
+            <p className="text-xs text-muted-foreground flex items-center gap-3 px-1">
+              <span className="flex items-center gap-1"><span className="text-green-600">●</span> Alocat</span>
+              <span className="flex items-center gap-1"><span className="text-amber-500">●</span> Verificați alocarea profesorului extern</span>
+              <span className="flex items-center gap-1"><span className="text-gray-400">●</span> Nealocat</span>
+            </p>
+          )}
         </div>
       )}
 
