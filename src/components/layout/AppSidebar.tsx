@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
-  CalendarX2,
   BarChart3,
   Settings,
   LogOut,
@@ -36,15 +35,7 @@ import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/permissions";
 import { useState } from "react";
 
-const navItems = [
-  { href: "/panou-principal", label: "Panou principal", icon: LayoutDashboard },
-  { href: "/catalog", label: "Catalog", icon: BookOpen },
-  { href: "/absente", label: "Absențe", icon: CalendarX2 },
-  { href: "/rapoarte", label: "Rapoarte", icon: BarChart3 },
-];
-
 const adminSubItems = [
-  { href: "/admin/scoala", label: "Școala mea", icon: School },
   { href: "/admin/ani-scolari", label: "Ani școlari", icon: CalendarDays },
   { href: "/admin/clase", label: "Clase", icon: GraduationCap },
   { href: "/admin/profesori", label: "Profesori", icon: UserCog },
@@ -92,6 +83,7 @@ export function AppSidebar({ roles = [] }: { roles?: string[] }) {
   const isAdminSection = pathname.startsWith("/admin");
   const [adminOpen, setAdminOpen] = useState(isAdminSection);
   const { canViewAdminPanel, isHomeroom } = usePermissions(roles);
+  const isTeacher = roles.includes("TEACHER") || roles.includes("HOMEROOM");
 
   return (
     <Sidebar>
@@ -109,20 +101,22 @@ export function AppSidebar({ roles = [] }: { roles?: string[] }) {
 
       <SidebarContent className="px-3 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-white/50 text-xs font-semibold uppercase tracking-wider px-3 mb-1">
-            Navigare
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              <NavLink
+                href="/panou-principal"
+                label="Panou principal"
+                icon={LayoutDashboard}
+                isActive={pathname === "/panou-principal"}
+              />
+              {isTeacher && (
                 <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  icon={item.icon}
-                  isActive={pathname === item.href}
+                  href="/catalog"
+                  label="Catalog"
+                  icon={BookOpen}
+                  isActive={pathname.startsWith("/catalog") && pathname !== "/catalog/clasa-mea"}
                 />
-              ))}
+              )}
               {isHomeroom && (
                 <NavLink
                   href="/catalog/clasa-mea"
@@ -131,73 +125,82 @@ export function AppSidebar({ roles = [] }: { roles?: string[] }) {
                   isActive={pathname === "/catalog/clasa-mea"}
                 />
               )}
+              <NavLink
+                href="/rapoarte"
+                label="Rapoarte"
+                icon={BarChart3}
+                isActive={pathname === "/rapoarte"}
+              />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {canViewAdminPanel && (
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-white/50 text-xs font-semibold uppercase tracking-wider px-3 mb-1">
-            Sistem
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* Admin expandable section */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isAdminSection && !adminSubItems.some((i) => i.href === pathname)}
-                  onClick={() => setAdminOpen((v) => !v)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full cursor-pointer",
-                    isAdminSection
-                      ? "text-white"
-                      : "text-white/70 hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  <Settings className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">Administrare</span>
-                  <ChevronDown
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-white/50 text-xs font-semibold uppercase tracking-wider px-3 mb-1">
+              Sistem
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <NavLink
+                  href="/admin/scoala"
+                  label="Școala mea"
+                  icon={School}
+                  isActive={pathname === "/admin/scoala"}
+                />
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isAdminSection && pathname !== "/admin/scoala"}
+                    onClick={() => setAdminOpen((v) => !v)}
                     className={cn(
-                      "w-3.5 h-3.5 transition-transform",
-                      adminOpen && "rotate-180"
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full cursor-pointer",
+                      isAdminSection && pathname !== "/admin/scoala"
+                        ? "text-white"
+                        : "text-white/70 hover:bg-white/10 hover:text-white"
                     )}
-                  />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Sub-items */}
-              {adminOpen && (
-                <div className="ml-3 border-l border-white/10 pl-3 mt-1 space-y-0.5">
-                  {adminSubItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = pathname === item.href;
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          render={
-                            <Link
-                              href={item.href}
-                              className={cn(
-                                "flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors w-full",
-                                isActive
-                                  ? "bg-white/15 text-white"
-                                  : "text-white/60 hover:bg-white/10 hover:text-white"
-                              )}
-                            >
-                              <Icon className="w-3.5 h-3.5 shrink-0" />
-                              <span>{item.label}</span>
-                            </Link>
-                          }
-                        />
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </div>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  >
+                    <Settings className="w-4 h-4 shrink-0" />
+                    <span className="flex-1">Administrare</span>
+                    <ChevronDown
+                      className={cn(
+                        "w-3.5 h-3.5 transition-transform",
+                        adminOpen && "rotate-180"
+                      )}
+                    />
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {adminOpen && (
+                  <div className="ml-3 border-l border-white/10 pl-3 mt-1 space-y-0.5">
+                    {adminSubItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton
+                            isActive={isActive}
+                            render={
+                              <Link
+                                href={item.href}
+                                className={cn(
+                                  "flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors w-full",
+                                  isActive
+                                    ? "bg-white/15 text-white"
+                                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                                )}
+                              >
+                                <Icon className="w-3.5 h-3.5 shrink-0" />
+                                <span>{item.label}</span>
+                              </Link>
+                            }
+                          />
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
       </SidebarContent>
 
