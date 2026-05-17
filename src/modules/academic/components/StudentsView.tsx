@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, School2, Upload, Plus, Pencil } from "lucide-react";
+import { Search, School2, Upload, Plus, Pencil, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Link from "next/link";
 import { EleviClasa } from "./EleviClasa";
 import type { EleviClassaStudentRow } from "./EleviClasa";
 import { StudentModal } from "./StudentModal";
@@ -256,14 +257,23 @@ export function StudentsView({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                            onClick={() => setEditTarget(s)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditTarget(s)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Link
+                              href={`/admin/elevi/${s.id}?an=${selectedYearId}`}
+                              className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+                              title="Fișa elevului"
+                            >
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Link>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
