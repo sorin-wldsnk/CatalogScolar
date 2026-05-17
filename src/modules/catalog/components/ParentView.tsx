@@ -20,6 +20,14 @@ import {
 } from "@/components/ui/table";
 import { GRADE_TYPE_LABELS } from "@/lib/grading";
 
+interface AbsenceItem {
+  id: string;
+  absentDate: string | null;
+  period: number | null;
+  status: string;
+  excuseReason: string | null;
+}
+
 interface SubjectSummary {
   subjectId: string;
   subjectName: string;
@@ -33,6 +41,7 @@ interface SubjectSummary {
     gradedAt: string | null;
     notes: string | null;
   }>;
+  absences?: AbsenceItem[];
   average: number | null;
   excusedAbsences: number;
   unexcusedAbsences: number;
@@ -51,6 +60,15 @@ const ABSENCE_LABEL: Record<string, { label: string; color: string }> = {
   EXCUSED: { label: "Motivată", color: "bg-green-100 text-green-700 border-green-200" },
   PENDING_EXCUSE: { label: "În așteptare", color: "bg-amber-100 text-amber-700 border-amber-200" },
 };
+
+const RO_MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+
+function formatRoDate(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  const [year, month, day] = dateStr.split("-");
+  if (!year || !month || !day) return dateStr;
+  return `${parseInt(day)} ${RO_MONTHS[parseInt(month) - 1]} ${year}`;
+}
 
 export function ParentView({ studentName, className, subjects, semester }: Props) {
   const router = useRouter();
@@ -226,21 +244,28 @@ export function ParentView({ studentName, className, subjects, semester }: Props
                 </div>
               )}
 
-              {/* Absences summary */}
-              {(selectedSubject.unexcusedAbsences > 0 || selectedSubject.excusedAbsences > 0) && (
+              {/* Absences */}
+              {(selectedSubject.absences?.length ?? 0) > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Absențe</h3>
-                  <div className="flex gap-3">
-                    {selectedSubject.unexcusedAbsences > 0 && (
-                      <Badge className="bg-red-100 text-red-700 border-red-200 border">
-                        {selectedSubject.unexcusedAbsences} nemotivate
-                      </Badge>
-                    )}
-                    {selectedSubject.excusedAbsences > 0 && (
-                      <Badge className="bg-green-100 text-green-700 border-green-200 border">
-                        {selectedSubject.excusedAbsences} motivate
-                      </Badge>
-                    )}
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                    Absențe ({selectedSubject.absences!.length})
+                  </h3>
+                  <div className="space-y-1.5">
+                    {selectedSubject.absences!.map((a) => {
+                      const cfg = ABSENCE_LABEL[a.status] ?? ABSENCE_LABEL.UNEXCUSED;
+                      return (
+                        <div key={a.id} className="flex items-center gap-2 text-sm rounded-lg border px-3 py-2">
+                          <span className="font-medium shrink-0">{formatRoDate(a.absentDate)}</span>
+                          {a.period && (
+                            <span className="text-muted-foreground shrink-0 text-xs">• ora {a.period}</span>
+                          )}
+                          <Badge className={`text-xs border shrink-0 ${cfg.color}`}>{cfg.label}</Badge>
+                          {a.excuseReason && (
+                            <span className="text-muted-foreground text-xs truncate">— {a.excuseReason}</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

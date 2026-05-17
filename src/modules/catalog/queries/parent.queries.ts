@@ -75,11 +75,14 @@ export async function getParentDashboardData(
     )
     .orderBy(subject.name, grade.gradedAt);
 
-  const absenceCounts = await db
+  const absenceRows = await db
     .select({
+      id: absence.id,
       subjectId: absence.subjectId,
+      absentDate: absence.absentDate,
+      period: absence.period,
       status: absence.status,
-      cnt: sql<number>`COUNT(*)`,
+      excuseReason: absence.excuseReason,
     })
     .from(absence)
     .where(
@@ -88,7 +91,7 @@ export async function getParentDashboardData(
         eq(absence.semester, semester)
       )
     )
-    .groupBy(absence.subjectId, absence.status);
+    .orderBy(absence.absentDate);
 
   // Group by subject
   const subjectMap = new Map<string, {
@@ -96,6 +99,7 @@ export async function getParentDashboardData(
     subjectName: string;
     subjectCode: string;
     grades: typeof grades;
+    absences: typeof absenceRows;
     excusedAbsences: number;
     unexcusedAbsences: number;
     average: number | null;
@@ -111,6 +115,7 @@ export async function getParentDashboardData(
         subjectName: g.subjectName,
         subjectCode: g.subjectCode,
         grades: [g],
+        absences: [],
         excusedAbsences: 0,
         unexcusedAbsences: 0,
         average: null,
@@ -118,11 +123,48 @@ export async function getParentDashboardData(
     }
   }
 
-  for (const a of absenceCounts) {
-    const entry = subjectMap.get(a.subjectId);
-    if (entry) {
-      if (a.status === "EXCUSED") entry.excusedAbsences = Number(a.cnt);
-      else if (a.status === "UNEXCUSED") entry.unexcusedAbsences = Number(a.cnt);
+  for (const a of absenceRows) {
+    let entry = subjectMap.get(a.subjectId);
+    if (!entry) {
+      // subject has absences but no grades — need to look up subject name
+      continue;
+    }
+    entry.absences.push(a);
+    if (a.status === "EXCUSED") entry.excusedAbsences++;
+    else if (a.status === "UNEXCUSED") entry.unexcusedAbsences++;
+  }
+
+  // Add subjects that have only absences (no grades)
+  const subjectsWithOnlyAbsences = absenceRows.filter((a) => !subjectMap.has(a.subjectId));
+  if (subjectsWithOnlyAbsences.length > 0) {
+    const uniqueSubjectIds = [...new Set(subjectsWithOnlyAbsences.map((a) => a.subjectId))];
+    const { subject: subjectTable } = await import("@/db/schema");
+    const { inArray: inArr } = await import("drizzle-orm");
+    const subjectDetails = await db
+      .select({ id: subjectTable.id, name: subjectTable.name, code: subjectTable.code })
+      .from(subjectTable)
+      .where(inArr(subjectTable.id, uniqueSubjectIds));
+    const subjectDetailMap = new Map(subjectDetails.map((s) => [s.id, s]));
+    for (const a of subjectsWithOnlyAbsences) {
+      const subj = subjectDetailMap.get(a.subjectId);
+      if (!subj) continue;
+      let entry = subjectMap.get(a.subjectId);
+      if (!entry) {
+        entry = {
+          subjectId: a.subjectId,
+          subjectName: subj.name,
+          subjectCode: subj.code,
+          grades: [],
+          absences: [],
+          excusedAbsences: 0,
+          unexcusedAbsences: 0,
+          average: null,
+        };
+        subjectMap.set(a.subjectId, entry);
+      }
+      entry.absences.push(a);
+      if (a.status === "EXCUSED") entry.excusedAbsences++;
+      else if (a.status === "UNEXCUSED") entry.unexcusedAbsences++;
     }
   }
 
