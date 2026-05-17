@@ -267,7 +267,7 @@ export function ClassDetailView({
               <TableBody>
                 {subjects.map((s) => {
                   const allocated = !!s.assignmentId;
-                  const itinerantWarning = allocated && s.isItinerant && isPrimary;
+                  const itinerantWarning = allocated && s.isItinerant && isPrimary && s.teacherUserId === currentHomeroomId;
                   const allocatedOk = allocated && !itinerantWarning;
 
                   return (
