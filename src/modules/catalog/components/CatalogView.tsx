@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, CalendarX2, ChevronRight } from "lucide-react";
+import { Plus, CalendarX2, ChevronRight, List } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { GradeModal } from "./GradeModal";
 import { AbsenceModal } from "./AbsenceModal";
+import { AbsenceListModal } from "./AbsenceListModal";
 import { HomeroomTabs } from "./HomeroomTabs";
 import { computeAverage, getGradingScale } from "@/lib/grading";
 import { usePermissions } from "@/lib/permissions";
@@ -53,6 +54,11 @@ interface ActiveModal {
   studentName: string;
 }
 
+interface AbsenceListTarget {
+  studentName: string;
+  row: CatalogStudentRow;
+}
+
 export function CatalogView({
   teacherClasses,
   teacherSubjects,
@@ -70,8 +76,11 @@ export function CatalogView({
 }: Props) {
   const router = useRouter();
   const [activeModal, setActiveModal] = useState<ActiveModal | null>(null);
+  const [absenceListTarget, setAbsenceListTarget] = useState<AbsenceListTarget | null>(null);
   const [homeroomTab, setHomeroomTab] = useState<"motivari" | "observatii">("motivari");
   const { canAddGrade, canAddAbsence } = usePermissions(roles);
+  const isAdmin = roles.includes("ADMIN");
+  const canDeleteToday = roles.some((r) => ["TEACHER", "HOMEROOM", "ADMIN"].includes(r));
 
   const isViewingHomeroomClass = isHomeroom && homeroomClassId && selectedClassId === homeroomClassId;
 
@@ -276,18 +285,28 @@ export function CatalogView({
                           )}
                         </TableCell>
                         <TableCell>
-                          {totalAbsences > 0 ? (
-                            <span className="text-sm">
-                              <span className="text-red-600 font-medium">{s.unexcusedAbsences}</span>
-                              <span className="text-muted-foreground"> / </span>
-                              <span className="text-green-700">{s.excusedAbsences}</span>
-                              {s.pendingAbsences > 0 && (
-                                <span className="text-amber-600 ml-1">({s.pendingAbsences} pend.)</span>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">0</span>
-                          )}
+                          <button
+                            className="flex items-center gap-1 group"
+                            title="Vezi absențe"
+                            onClick={() => setAbsenceListTarget({
+                              studentName: `${s.lastName} ${s.firstName}`,
+                              row: s,
+                            })}
+                          >
+                            {totalAbsences > 0 ? (
+                              <span className="text-sm group-hover:underline underline-offset-2">
+                                <span className="text-red-600 font-medium">{s.unexcusedAbsences}</span>
+                                <span className="text-muted-foreground"> / </span>
+                                <span className="text-green-700">{s.excusedAbsences}</span>
+                                {s.pendingAbsences > 0 && (
+                                  <span className="text-amber-600 ml-1">({s.pendingAbsences} pend.)</span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm group-hover:underline underline-offset-2">0</span>
+                            )}
+                            <List className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -366,6 +385,17 @@ export function CatalogView({
           academicYearId={academicYearId}
           semester={selectedSemester}
           studentName={activeModal.studentName}
+        />
+      )}
+      {absenceListTarget && (
+        <AbsenceListModal
+          open
+          onClose={() => setAbsenceListTarget(null)}
+          studentName={absenceListTarget.studentName}
+          subjectName={teacherSubjects.find((s) => s.id === selectedSubjectId)?.name ?? "Materie"}
+          absences={absenceListTarget.row.absences}
+          isAdmin={isAdmin}
+          canDeleteToday={canDeleteToday}
         />
       )}
     </div>

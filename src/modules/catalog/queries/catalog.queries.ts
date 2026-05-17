@@ -2,6 +2,14 @@ import { db } from "@/db";
 import { grade, absence, enrollment, student, classGroup } from "@/db/schema";
 import { eq, and, sql, inArray } from "drizzle-orm";
 
+export interface AbsenceDetail {
+  id: string;
+  absentDate: string;
+  period: number | null;
+  status: string;
+  excuseReason: string | null;
+}
+
 export interface CatalogStudentRow {
   enrollmentId: string;
   studentId: string;
@@ -16,6 +24,7 @@ export interface CatalogStudentRow {
     gradedAt: string;
     notes: string | null;
   }>;
+  absences: AbsenceDetail[];
   excusedAbsences: number;
   unexcusedAbsences: number;
   pendingAbsences: number;
@@ -73,11 +82,14 @@ export async function getCatalogTableData(
     )
     .orderBy(grade.gradedAt);
 
-  const absenceCounts = await db
+  const absenceRows = await db
     .select({
+      id: absence.id,
       enrollmentId: absence.enrollmentId,
+      absentDate: absence.absentDate,
+      period: absence.period,
       status: absence.status,
-      cnt: sql<number>`COUNT(*)`,
+      excuseReason: absence.excuseReason,
     })
     .from(absence)
     .where(
@@ -88,11 +100,11 @@ export async function getCatalogTableData(
         inArray(absence.enrollmentId, enrollmentIds)
       )
     )
-    .groupBy(absence.enrollmentId, absence.status);
+    .orderBy(absence.absentDate);
 
   return students.map((s) => {
     const studentGrades = grades.filter((g) => g.enrollmentId === s.enrollmentId);
-    const studentAbsences = absenceCounts.filter((a) => a.enrollmentId === s.enrollmentId);
+    const studentAbsences = absenceRows.filter((a) => a.enrollmentId === s.enrollmentId);
 
     return {
       enrollmentId: s.enrollmentId,
@@ -108,9 +120,16 @@ export async function getCatalogTableData(
         gradedAt: g.gradedAt ?? "",
         notes: g.notes,
       })),
-      excusedAbsences: Number(studentAbsences.find((a) => a.status === "EXCUSED")?.cnt ?? 0),
-      unexcusedAbsences: Number(studentAbsences.find((a) => a.status === "UNEXCUSED")?.cnt ?? 0),
-      pendingAbsences: Number(studentAbsences.find((a) => a.status === "PENDING_EXCUSE")?.cnt ?? 0),
+      absences: studentAbsences.map((a) => ({
+        id: a.id,
+        absentDate: a.absentDate ?? "",
+        period: a.period,
+        status: a.status,
+        excuseReason: a.excuseReason,
+      })),
+      excusedAbsences: studentAbsences.filter((a) => a.status === "EXCUSED").length,
+      unexcusedAbsences: studentAbsences.filter((a) => a.status === "UNEXCUSED").length,
+      pendingAbsences: studentAbsences.filter((a) => a.status === "PENDING_EXCUSE").length,
     };
   });
 }
