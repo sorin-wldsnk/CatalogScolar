@@ -111,7 +111,7 @@ export function CsvImportModal({ open, onClose, academicYearId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="max-w-4xl flex flex-col max-h-[85vh]">
+      <DialogContent className="sm:max-w-4xl w-full flex flex-col max-h-[85vh]">
         <DialogHeader className="shrink-0">
           <DialogTitle>Import elevi din CSV</DialogTitle>
         </DialogHeader>
